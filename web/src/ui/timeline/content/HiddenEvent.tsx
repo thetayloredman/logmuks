@@ -45,6 +45,8 @@ const HiddenEvent = ({ event }: EventContentProps) => {
 				{event.content["m.relates_to"].key}
 			</code>
 		)
+	} else if (event.type === "m.room.message" && event.content["m.relates_to"]?.rel_type === "m.replace") {
+		return <code>m.room.message replaces={renderEventLink(event.content["m.relates_to"].event_id)}</code>
 	} else {
 		return <code>{`${event.type}`}</code>
 	}
