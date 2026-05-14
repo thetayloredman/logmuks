@@ -35,9 +35,10 @@ const HiddenEvent = ({ event }: EventContentProps) => {
 		</a>
 	)
 
-	if (event.type === "m.room.redaction") {
+	// check for a field within content so that redacted reactions/redactions don't throw
+	if (event.type === "m.room.redaction" && event.content.redacts) {
 		return <code>m.room.redaction {renderEventLink(event.content.redacts)}</code>
-	} else if (event.type === "m.reaction") {
+	} else if (event.type === "m.reaction" && event.content["m.relates_to"]) {
 		return (
 			<code>
 				m.reaction event_id={renderEventLink(event.content["m.relates_to"].event_id)}, key=
