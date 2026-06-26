@@ -152,17 +152,31 @@ div.right-panel-content.user {
 	padding: 1rem 1rem calc(1rem + var(--window-bottom-margin));
 
 	div.avatar-container {
-		width: calc((var(--right-panel-width) - 4rem));
-		height: calc((var(--right-panel-width) - 4rem));
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		padding: 1rem;
-		margin: 0 auto;
+		width: var(--right-panel-width);
+		height: var(--right-panel-height);
+		margin: 0;
+		display: grid;
+  		grid-template-columns: 10px var(--profile-avatar-size) 1fr;
+  		grid-template-rows: var(--profle-banner-height) repeat(calc(var(--profile-avatar-size) / 2), 2);
 
 		> img {
 			width: 100%;
 			height: 100%;
+		}
+
+		> img.avatar {
+			width: var(--profile-avatar-size);
+			height: var(--profile-avatar-size);
+			grid-column: 2;
+			grid-row: 2 / 4;
+			z-index: 1;
+		}
+		
+		> img.banner {
+			grid-row: 1 / 3;
+			grid-column: 1 / 4;
+			height: var(--profile-banner-height);
+			overflow: clip;
 		}
 	}
 
