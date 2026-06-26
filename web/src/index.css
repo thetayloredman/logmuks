@@ -20,6 +20,10 @@
 	--small-font-size: .875rem;
 	--modal-max-width: 80rem;
 
+	/* where should this go ??? */
+	--profile-avatar-size: 100px;
+	--profile-banner-height: 100px;
+
 	--code-background-color: rgba(0, 0, 0, 0.15);
 	--media-placeholder-default-background: rgba(0, 0, 0, .1);
 	--media-placeholder-button-background: rgba(255, 255, 255, .5);

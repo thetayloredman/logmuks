@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { JSX, use, useCallback, useEffect, useState } from "react"
 import { PuffLoader } from "react-spinners"
-import { getAvatarURL } from "@/api/media.ts"
+import { getAvatarURL, getMediaURL, getUserColor } from "@/api/media.ts"
 import { fakeGomuksSender, maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
 import { GetProfileResponse, UserID } from "@/api/types"
 import { ensureString, getLocalpart, getServerName } from "@/util/validation.ts"
@@ -65,19 +65,42 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	} else {
 		reactUserID = <>@<span className="bidi-isolate">{getLocalpart(userID)}</span>:{getServerName(userID)}</>
 	}
+	const getBannerURL = (profile: UserProfile | null) => {
+		if (!profile) {
+			return undefined
+		}
+		const url = ensureString(profile["chat.commet.profile_banner"])
+		return getMediaURL(url, false)
+	}
+	const bannerURL = getBannerURL(globalProfile)
+	let userColor
+	if (!bannerURL) {
+		userColor = getUserColor(userID)
+	}
 	return <>
 		<div className="avatar-container">
 			{!renderedProfile && errors == null ? <PuffLoader
 				color="var(--primary-color)"
 				size="100%"
 				className="avatar-loader"
-			/> : <img
-				className="avatar"
-				// this is a big avatar (236px by default), use full resolution
-				src={getAvatarURL(userID, renderedProfile)}
-				onClick={openLightbox}
-				alt=""
-			/>}
+			/> : 
+				<>
+				<img
+					className="avatar"
+					// this is a big avatar (236px by default), use full resolution
+					src={getAvatarURL(userID, member ?? globalProfile)}
+					onClick={openLightbox}
+					alt=""
+				/>
+				<img
+					className="banner"
+					// also full res because lazy
+					src={getBannerURL(globalProfile)}
+					style={{backgroundColor: userColor}}
+					onClick={openLightbox}
+					alt=""
+				/>
+			</>}
 		</div>
 		<div className="displayname" title={displayname}>{displayname}</div>
 		<div className="userid" title={userID}>
