@@ -85,6 +85,7 @@ div.html-body {
 		   Middle may be nicer for emojis, but that doesn't work nicely with pills. */
 		vertical-align: bottom;
 		height: 2rem; /* text height is 1.5rem, so this will make lines a bit taller */
+		aspect-ratio: auto 1/1;
 		width: auto;
 		max-width: 5rem;
 	}
