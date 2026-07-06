@@ -37,6 +37,8 @@ interface UserModerationProps {
 	member: MemDBEvent | null;
 }
 
+const powerSlider = !!localStorage.gomuks_power_slider
+
 const UserModeration = ({ userID, client, member, room }: UserModerationProps) => {
 	const openModal = use(ModalContext)
 	const [redactRemaining, setRedactRemaining] = useState<number>(0)
@@ -180,12 +182,13 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 		<div className="moderation-action">
 			<PowerLevelIcon />
 			<input
-				type={isCreator ? "text" : "number"}
+				type={isCreator ? "text" : powerSlider ? "range" : "number"}
 				value={isCreator ? "Infinity" : modifiedPL ?? otherUserPL}
 				max={Math.min(ownPL, Number.MAX_SAFE_INTEGER)}
 				min={Number.MIN_SAFE_INTEGER}
 				disabled={!hasPLPL || powerLoading}
 				onChange={onChangePL}
+				onMouseUp={powerSlider ? onClickSavePL : undefined}
 				onKeyDown={onPLKeyDown}
 				title="Power level"
 			/>
