@@ -99,7 +99,7 @@ function renderRightPanelContent(props: RightPanelProps, mainScreen: MainScreenC
 	case "widget":
 		return <LazyWidget info={props.info} onClose={mainScreen.closeRightPanel} />
 	case "user":
-		return <UserInfo userID={props.userID} />
+		return <UserInfo userID={props.userID} key={props.userID} />
 	case "thread":
 		return <ThreadView key={props.threadRoot} threadRoot={props.threadRoot} />
 	}

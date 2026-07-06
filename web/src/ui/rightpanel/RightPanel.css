@@ -303,17 +303,30 @@ div.right-panel-content.user {
 		display: flex;
 		flex-direction: column;
 
-		button.moderation-action {
+		.moderation-action {
 			padding: .5rem;
 			width: 100%;
 			gap: .5rem;
 			justify-content: left;
+			display: flex;
 
 			&.dangerous {
 				color: var(--error-color);
 			}
 			&.positive {
 				color: var(--primary-color);
+			}
+
+			> svg {
+				flex-shrink: 0;
+			}
+
+			> input {
+				border: none;
+				border-bottom: 1px solid var(--border-color);
+				outline: none;
+				height: 1.5rem;
+				box-sizing: border-box;
 			}
 		}
 	}

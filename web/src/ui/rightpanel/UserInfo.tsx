@@ -95,8 +95,8 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 		{!fakeUser && <DeviceList client={client} room={roomCtx?.store} userID={userID}/>}
 		{userID !== client.userID && !fakeUser && <>
 			<MutualRooms client={client} userID={userID}/>
-			<UserModeration client={client} room={roomCtx?.store} member={memberEvt} userID={userID}/>
 		</>}
+		<UserModeration client={client} room={roomCtx?.store} member={memberEvt} userID={userID}/>
 		<UserInfoError errors={errors}/>
 	</>
 }

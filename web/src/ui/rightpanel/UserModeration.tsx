@@ -13,19 +13,22 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { JSX, use, useState } from "react"
+import React, { JSX, use, useState } from "react"
+import { MoonLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomStateStore, useRoomState } from "@/api/statestore"
-import { MemDBEvent, MembershipAction } from "@/api/types"
+import { MemDBEvent, MembershipAction, PowerLevelEventContent } from "@/api/types"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import { getPowerLevels } from "../menu/util.ts"
 import { BulkRedactModal, ConfirmWithMessageModal, ModalContext } from "../modal"
 import StartDMButton from "./StartDMButton.tsx"
 import UserIgnoreButton from "./UserIgnoreButton.tsx"
+import CheckIcon from "@/icons/check.svg?react"
 import DeleteIcon from "@/icons/delete.svg?react"
 import BanIcon from "@/icons/gavel.svg?react"
 import InviteIcon from "@/icons/person-add.svg?react"
 import KickIcon from "@/icons/person-remove.svg?react"
+import PowerLevelIcon from "@/icons/shield-person.svg?react"
 
 interface UserModerationProps {
 	userID: string;
@@ -37,6 +40,8 @@ interface UserModerationProps {
 const UserModeration = ({ userID, client, member, room }: UserModerationProps) => {
 	const openModal = use(ModalContext)
 	const [redactRemaining, setRedactRemaining] = useState<number>(0)
+	const [modifiedPL, setModifiedPL] = useState<number | null>(null)
+	const [powerLoading, setPowerLoading] = useState<boolean>(false)
 	useRoomState(room, "m.room.power_levels")
 	if (!room) {
 		return makeNonRoomUserActions(client, userID)
@@ -124,10 +129,74 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 		})
 	}
 	const membership = member?.content.membership || "leave"
+	const isCreator = otherUserPL === Infinity
+	const hasPLPL = ownPL >= (pls.events?.["m.room.power_levels"] ?? pls.state_default ?? 50)
+		&& !isCreator
+		&& (ownPL > otherUserPL || pls.users?.[userID] === undefined || userID === client.userID)
+	const onClickSavePL = () => {
+		if (modifiedPL === null) {
+			return
+		}
+		const powerCopy: PowerLevelEventContent = { ...pls }
+		if (modifiedPL === (pls.users_default ?? 0)) {
+			if (powerCopy.users) {
+				delete powerCopy.users[userID]
+			}
+		} else {
+			powerCopy.users = {
+				...(pls.users ?? {}),
+				[userID]: modifiedPL,
+			}
+		}
+		setPowerLoading(true)
+		client.rpc.setState(room.roomID, "m.room.power_levels", "", powerCopy).then(
+			() => console.info("Successfully set power level of", userID, "to", modifiedPL),
+			err => window.alert(`Failed to set power level: ${err}`),
+		).finally(() => setPowerLoading(false))
+	}
+	const onChangePL = (evt: React.ChangeEvent<HTMLInputElement>) => {
+		let newPL: number | null = evt.target.valueAsNumber
+		if (isNaN(newPL)) {
+			return
+		} else if (newPL > ownPL) {
+			newPL = ownPL
+		} else if (newPL > Number.MAX_SAFE_INTEGER) {
+			newPL = Number.MAX_SAFE_INTEGER
+		} else if (newPL < Number.MIN_SAFE_INTEGER) {
+			newPL = Number.MIN_SAFE_INTEGER
+		}
+		setModifiedPL(newPL)
+	}
+	const onPLKeyDown = (evt: React.KeyboardEvent<HTMLInputElement>) => {
+		if (evt.key === "Escape") {
+			setModifiedPL(null)
+			evt.currentTarget.blur()
+			evt.stopPropagation()
+		}
+	}
 
 	return <div className="user-moderation">
 		<h4>Actions</h4>
-		{room.meta.current.dm_user_id !== userID ? <StartDMButton userID={userID} client={client} /> : null}
+		<div className="moderation-action">
+			<PowerLevelIcon />
+			<input
+				type={isCreator ? "text" : "number"}
+				value={isCreator ? "Infinity" : modifiedPL ?? otherUserPL}
+				max={Math.min(ownPL, Number.MAX_SAFE_INTEGER)}
+				min={Number.MIN_SAFE_INTEGER}
+				disabled={!hasPLPL || powerLoading}
+				onChange={onChangePL}
+				onKeyDown={onPLKeyDown}
+				title="Power level"
+			/>
+			{modifiedPL !== null && modifiedPL !== otherUserPL && <button
+				disabled={!hasPLPL || powerLoading}
+				onClick={onClickSavePL}
+				title="Save power level"
+			>{powerLoading ? <MoonLoader size={16} /> : <CheckIcon />}</button>}
+		</div>
+		{room.meta.current.dm_user_id !== userID && client.userID !== userID ?
+			<StartDMButton userID={userID} client={client} /> : null}
 		{(["knock", "leave"].includes(membership) || !member) && hasPL("invite") && (
 			<button className="moderation-action positive" onClick={runAction("invite")}>
 				<InviteIcon />
