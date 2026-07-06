@@ -128,11 +128,6 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 			/>,
 		})
 	}
-	const membership = member?.content.membership || "leave"
-	const isCreator = otherUserPL === Infinity
-	const hasPLPL = ownPL >= (pls.events?.["m.room.power_levels"] ?? pls.state_default ?? 50)
-		&& !isCreator
-		&& (ownPL > otherUserPL || pls.users?.[userID] === undefined || userID === client.userID)
 	const onClickSavePL = () => {
 		if (modifiedPL === null) {
 			return
@@ -175,6 +170,11 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 		}
 	}
 
+	const membership = member?.content.membership || "leave"
+	const isCreator = otherUserPL === Infinity
+	const hasPLPL = ownPL >= (pls.events?.["m.room.power_levels"] ?? pls.state_default ?? 50)
+		&& !isCreator
+		&& (ownPL > otherUserPL || pls.users?.[userID] === undefined || userID === client.userID)
 	return <div className="user-moderation">
 		<h4>Actions</h4>
 		<div className="moderation-action">
