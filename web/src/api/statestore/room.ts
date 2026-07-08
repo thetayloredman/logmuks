@@ -393,7 +393,7 @@ export class RoomStateStore {
 		const servers = Array.from(memberCount.entries())
 		servers.sort(([, a], [, b]) => b - a)
 		for (const [serverName] of servers) {
-			if (serverName !== ownServerName && serverName !== powerServer) {
+			if (serverName !== ownServerName && serverName !== powerServer && serverName !== "matrix.org") {
 				vias.push(serverName)
 				break
 			}
