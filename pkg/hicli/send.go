@@ -85,6 +85,21 @@ var accountDataPerMessageProfiles = event.Type{
 
 func (h *HiClient) getPerMessageProfile(ctx context.Context, name string) *event.BeeperPerMessageProfile {
 	var profiles map[string]*event.BeeperPerMessageProfile
+
+	if _, _, err := id.UserID(name).ParseAndValidateRelaxed(); err == nil {
+		profile, err := h.Client.GetProfile(ctx, id.UserID(name))
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("Failed to get profile for impersonation")
+			return nil
+		}
+		avatarURL := profile.AvatarURL.CUString()
+		return &event.BeeperPerMessageProfile{
+			ID:          name,
+			Displayname: profile.DisplayName,
+			AvatarURL:   &avatarURL,
+		}
+	}
+
 	profilesPtr := h.perMessageProfiles.Load()
 	if profilesPtr == nil {
 		evt, err := h.DB.AccountData.GetGlobal(ctx, h.Account.UserID, accountDataPerMessageProfiles)
