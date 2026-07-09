@@ -213,8 +213,7 @@ const TimelineEvent = ({
 	if (evt.sender === client.userID) {
 		wrapperClassNames.push("own-event")
 	}
-	const forceContextMenuOnMobile =
-		viewType === "edit-history" || viewType === "context" || viewType === "pinned" || viewType === "notifications"
+	const forceContextMenuOnMobile = true
 	if ((isMobileDevice && !forceContextMenuOnMobile) || disableMenu) {
 		wrapperClassNames.push("no-hover")
 	}
