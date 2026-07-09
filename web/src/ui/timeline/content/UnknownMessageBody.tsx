@@ -19,7 +19,7 @@ import EventContentProps from "./props.ts"
 
 const UnknownMessageBody = ({ event }: EventContentProps) => {
 	const content = event.content as MessageEventContent
-	return <code>{`{ "type": "${event.type}", "content": { "msgtype": "${ensureString(content.msgtype)}" } }`}</code>
+	return <code>{`${event.type} { msgtype: "${ensureString(content.msgtype)}" }`}</code>
 }
 
 export default UnknownMessageBody
