@@ -1,6 +1,6 @@
 import { use, useEffect, useState } from "react"
 import Client from "@/api/client.ts"
-import { JSONValue, PronounSet, UserID, UserProfile } from "@/api/types"
+import { JSONValue, MemberEventContent, PronounSet, UserID, UserProfile } from "@/api/types"
 import { ensureArray, ensureString } from "@/util/validation.ts"
 import { ModalContext, modals } from "../modal"
 
@@ -9,6 +9,7 @@ interface ExtendedProfileProps {
 	refreshProfile: () => void
 	client: Client
 	userID: string
+	member: MemberEventContent | undefined
 }
 
 interface SetTimezoneProps {
@@ -145,19 +146,17 @@ const SimplePronouns = ({ pronouns, client, refreshProfile, userID }: PronounInp
 	</select>
 }
 
-const UserExtendedProfile = ({ profile, refreshProfile, client, userID }: ExtendedProfileProps)=>  {
+const UserExtendedProfile = ({ profile, refreshProfile, client, userID, member }: ExtendedProfileProps)=>  {
 	const openModal = use(ModalContext)!
 	if (!profile) {
-		return null
-	}
-
-	const hasExtendedProfile = Object.keys(profile).some((key) => key !== "displayname" && key !== "avatar_url")
-	if (!hasExtendedProfile && client.userID !== userID) {
-		return null
+		profile = {}
 	}
 
 	const viewExtensibleProfile = () => {
 		openModal(modals.jsonView(profile))
+	}
+	const viewMemberEvent = () => {
+		openModal(modals.jsonView(member))
 	}
 	// Explicitly only return something if the profile has the keys we're looking for.
 	// otherwise there's an ugly and pointless <hr/> for no real reason.
@@ -173,6 +172,8 @@ const UserExtendedProfile = ({ profile, refreshProfile, client, userID }: Extend
 			<SimplePronouns pronouns={pronouns} client={client} refreshProfile={refreshProfile} userID={userID} />
 		</>}
 		<button onClick={viewExtensibleProfile}>View raw profile</button>
+		{member ? <button onClick={viewMemberEvent}>View member event</button> : null}
+
 	</div>
 }
 

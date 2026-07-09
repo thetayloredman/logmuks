@@ -91,6 +91,7 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 			refreshProfile={refreshProfile}
 			client={client}
 			userID={userID}
+			member={member}
 		/>}
 		{!fakeUser && <DeviceList client={client} room={roomCtx?.store} userID={userID}/>}
 		{userID !== client.userID && !fakeUser && <>
