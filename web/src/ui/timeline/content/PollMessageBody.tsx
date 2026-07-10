@@ -24,6 +24,15 @@ import EventContentProps from "./props.ts"
 
 const votesLoadingKey = "__votes__" + Math.random().toString(36).slice(2, 10)
 
+function toVoteList(evt: MemDBEvent, maxSelections: number): string[] {
+	const content = evt.content as PollResponseEventContent
+	const voteList = ensureStringArray(content?.["org.matrix.msc3381.poll.response"]?.answers)
+	if (maxSelections > 0 && voteList.length > maxSelections) {
+		return voteList.slice(0, maxSelections)
+	}
+	return voteList
+}
+
 const PollMessageBody = ({ event, room }: EventContentProps) => {
 	const client = use(ClientContext)!
 
@@ -49,14 +58,13 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 				if (oldVotes === null) {
 					return null
 				}
-				const content = evt.content as PollResponseEventContent
 				return {
 					...oldVotes,
-					[evt.sender]: ensureStringArray(content?.["org.matrix.msc3381.poll.response"]?.answers),
+					[evt.sender]: toVoteList(evt, pollStart.max_selections),
 				}
 			})
 		}
-	}), [room, event.event_id, pollEndTS])
+	}), [room, event.event_id, pollEndTS, pollStart.max_selections])
 
 	const votesByAnswer = useMemo(() => {
 		if (!votes) {
@@ -99,12 +107,7 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 			) {
 				continue
 			}
-			const content = evt.content as PollResponseEventContent
-			let voteList = ensureStringArray(content?.["org.matrix.msc3381.poll.response"]?.answers)
-			if (pollStart.max_selections > 0 && voteList.length > pollStart.max_selections) {
-				voteList = voteList.slice(0, pollStart.max_selections)
-			}
-			votes[evt.sender] = voteList
+			votes[evt.sender] = toVoteList(evt, pollStart.max_selections)
 		}
 		setPollEndTS(pollEndTS)
 		setVotes(votes)
