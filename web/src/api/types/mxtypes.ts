@@ -372,6 +372,36 @@ export interface LocationMessageEventContent extends BaseMessageEventContent {
 
 export type MessageEventContent = TextMessageEventContent | MediaMessageEventContent | LocationMessageEventContent
 
+export interface LegacyMSC1767Text {
+	"org.matrix.msc1767.text"?: string
+	"org.matrix.msc1767.message"?: {
+		mimetype?: string
+		body: string
+	}[]
+}
+
+export type PollKind = "org.matrix.msc3381.poll.disclosed" | "org.matrix.msc3381.poll.undisclosed"
+
+export interface PollOption extends LegacyMSC1767Text {
+	id: string
+}
+
+export interface PollStartEventContent extends LegacyMSC1767Text {
+	"org.matrix.msc3381.poll.start": {
+		answers: PollOption[]
+		kind: PollKind
+		max_selections: number
+		question: LegacyMSC1767Text
+	}
+}
+
+export interface PollResponseEventContent {
+	"m.relates_to": RelatesTo
+	"org.matrix.msc3381.poll.response": {
+		answers: string[]
+	}
+}
+
 export type ImagePackUsage = "emoticon" | "sticker"
 
 export interface ImagePackEntry {

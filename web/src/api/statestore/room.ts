@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { Preferences, getLocalStoragePreferences, getPreferenceProxy } from "@/api/types/preferences"
 import { CustomEmojiPack, parseCustomEmojiPack } from "@/util/emoji"
-import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
+import { EventDispatcher, NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
@@ -138,6 +138,7 @@ export class RoomStateStore {
 	readonly eventsByRowID: Map<EventRowID, MemDBEvent> = new Map()
 	readonly eventsByID: Map<EventID, MemDBEvent> = new Map()
 	readonly timelineSub = new Subscribable()
+	readonly newTimelineEventSub = new EventDispatcher<MemDBEvent | null>()
 	readonly typingSub = new Subscribable()
 	readonly stateSubs = new MultiSubscribable()
 	readonly eventSubs = new MultiSubscribable()
@@ -593,6 +594,7 @@ export class RoomStateStore {
 			this.stateSubs.notify(evtType)
 		}
 		if (sync.reset) {
+			this.newTimelineEventSub.emit(null)
 			this.timeline = sync.timeline ?? []
 			this.pendingEvents.splice(0, this.pendingEvents.length)
 		} else if (sync.timeline) {
@@ -609,13 +611,18 @@ export class RoomStateStore {
 			this.applyReceipts(receipts, evtID, false)
 		}
 		if (
-			(hasWidgets || this.#threadListener)
+			(hasWidgets || this.#threadListener || this.newTimelineEventSub.hasListeners)
 			&& ((sync.timeline && sync.timeline.length > 0) || newState.length > 0 || (sync.sticky?.length ?? 0) > 0)
 		) {
 			const stickyEvts = sync.sticky?.map(rowID => this.eventsByRowID.get(rowID)).filter(evt => !!evt)
 			const evts = sync.timeline?.map(evt => this.eventsByRowID.get(evt.event_rowid)).filter(evt => !!evt)
 			if (this.#threadListener && this.#threadListenerRoot && evts) {
 				this.#threadListener(evts.filter(evt => isInThread(evt, this.#threadListenerRoot)))
+			}
+			if (evts && this.newTimelineEventSub.hasListeners) {
+				for (const evt of evts) {
+					this.newTimelineEventSub.emit(evt)
+				}
 			}
 			this.parent.widgetListeners.forEach(listener => {
 				stickyEvts?.forEach(listener.onTimelineEvent)

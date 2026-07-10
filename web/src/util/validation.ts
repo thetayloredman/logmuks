@@ -13,7 +13,17 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { ContentURI, EventID, MemDBEvent, RelatesTo, RoomAlias, RoomID, UserID, UserProfile } from "@/api/types"
+import {
+	ContentURI,
+	EventID,
+	LegacyMSC1767Text,
+	MemDBEvent,
+	RelatesTo,
+	RoomAlias,
+	RoomID,
+	UserID,
+	UserProfile,
+} from "@/api/types"
 
 const simpleHomeserverRegex = /^[a-zA-Z0-9.:-]+$/
 const mediaRegex = /^mxc:\/\/([a-zA-Z0-9.:-]+)\/([a-zA-Z0-9_-]+)$/
@@ -195,4 +205,17 @@ export function ensureTypedArray<T>(val: unknown, isCorrectType: (val: unknown) 
 		}
 	}
 	return val
+}
+
+export function getLegacyMSC1767Text(content?: LegacyMSC1767Text): string {
+	if (!content) {
+		return ""
+	} else if (typeof content["org.matrix.msc1767.text"] === "string") {
+		return content["org.matrix.msc1767.text"]
+	} else if (Array.isArray(content["org.matrix.msc1767.message"])) {
+		const textItem = content["org.matrix.msc1767.message"]
+			.find(item => !item.mimetype || item.mimetype === "text/plain")
+		return ensureString(textItem)
+	}
+	return ""
 }

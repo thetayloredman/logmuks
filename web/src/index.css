@@ -58,6 +58,8 @@
 
 	--emoji-selected-border-color: #cec;
 	--image-pack-editor-selected-color: #cec;
+	--poll-vote-bar-background-color: var(--media-placeholder-default-background);
+	--poll-vote-bar-highlight-color: var(--primary-color-dark);
 
 	--unread-counter-text-color: var(--inverted-text-color);
 	--unread-counter-message-bg: rgba(0, 0, 0, 0.35);
