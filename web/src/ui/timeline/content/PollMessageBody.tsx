@@ -26,11 +26,25 @@ const votesLoadingKey = "__votes__" + Math.random().toString(36).slice(2, 10)
 
 function toVoteList(evt: MemDBEvent, maxSelections: number): string[] {
 	const content = evt.content as PollResponseEventContent
-	const voteList = ensureStringArray(content?.["org.matrix.msc3381.poll.response"]?.answers)
-	if (maxSelections > 0 && voteList.length > maxSelections) {
-		return voteList.slice(0, maxSelections)
+	let voteList = ensureStringArray(content?.["org.matrix.msc3381.poll.response"]?.answers)
+	if (voteList.length > maxSelections) {
+		voteList = voteList.slice(0, maxSelections)
 	}
-	return voteList
+	return [...new Set(voteList)]
+}
+
+function getMaxSelections(pollStart: PollStartEventContent): number {
+	const start = pollStart["org.matrix.msc3381.poll.start"]
+	if (!Array.isArray(start.answers)) {
+		return 0
+	} else if (
+		typeof start.max_selections !== "number"
+		|| start.max_selections <= 0
+		|| start.max_selections > start.answers.length
+	) {
+		return start.answers.length
+	}
+	return start.max_selections
 }
 
 const PollMessageBody = ({ event, room }: EventContentProps) => {
@@ -42,6 +56,8 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 	const [votes, setVotes] = useState<Record<UserID, string[]> | null>(null)
 	const [pollEndTS, setPollEndTS] = useState<number>(0)
 	const [loading, setLoading] = useState<null | string>(null)
+	const maxSelections = getMaxSelections(content)
+	const answers = Array.isArray(pollStart.answers) ? pollStart.answers : []
 
 	useEffect(() => pollEndTS > 0 ? undefined : room.newTimelineEventSub.listen(evt => {
 		if (evt === null) {
@@ -60,11 +76,11 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 				}
 				return {
 					...oldVotes,
-					[evt.sender]: toVoteList(evt, pollStart.max_selections),
+					[evt.sender]: toVoteList(evt, maxSelections),
 				}
 			})
 		}
-	}), [room, event.event_id, pollEndTS, pollStart.max_selections])
+	}), [room, event.event_id, pollEndTS, maxSelections])
 
 	const votesByAnswer = useMemo(() => {
 		if (!votes) {
@@ -107,7 +123,7 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 			) {
 				continue
 			}
-			votes[evt.sender] = toVoteList(evt, pollStart.max_selections)
+			votes[evt.sender] = toVoteList(evt, maxSelections)
 		}
 		setPollEndTS(pollEndTS)
 		setVotes(votes)
@@ -132,8 +148,8 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 		if (checked) {
 			ownVote = [...ownVote]
 			ownVote.push(answerID)
-			if (pollStart.max_selections > 0 && ownVote.length > pollStart.max_selections) {
-				ownVote.splice(0, ownVote.length - pollStart.max_selections)
+			if (ownVote.length > maxSelections) {
+				ownVote.splice(0, ownVote.length - maxSelections)
 			}
 		} else {
 			ownVote = ownVote.filter(id => id !== answerID)
@@ -174,7 +190,7 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 		</div>
 
 		<div className="poll-answers">
-			{pollStart.answers?.map(answer => {
+			{answers.map(answer => {
 				const answerID = ensureString(answer.id)
 				if (!answerID) {
 					return null
@@ -209,7 +225,7 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 				</label>
 			})}
 			<div className="poll-rules">
-				Max {pollStart.max_selections} choice{pollStart.max_selections === 1 ? "" : "s"} per user
+				Max {maxSelections} choice{maxSelections === 1 ? "" : "s"} per user
 			</div>
 		</div>
 
