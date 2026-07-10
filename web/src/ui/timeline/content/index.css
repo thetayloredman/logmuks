@@ -313,6 +313,11 @@ div.poll-body {
 		flex-direction: column;
 		gap: .25rem;
 
+		> div.poll-rules {
+			font-size: .75rem;
+			color: var(--semisecondary-text-color);
+		}
+
 		> label.poll-answer {
 			width: 100%;
 			display: grid;

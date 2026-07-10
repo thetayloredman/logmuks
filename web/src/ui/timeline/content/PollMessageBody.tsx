@@ -205,6 +205,9 @@ const PollMessageBody = ({ event, room }: EventContentProps) => {
 					</> : null}
 				</label>
 			})}
+			<div className="poll-rules">
+				Max {pollStart.max_selections} choice{pollStart.max_selections === 1 ? "" : "s"} per user
+			</div>
 		</div>
 
 		{votes === null && <button
