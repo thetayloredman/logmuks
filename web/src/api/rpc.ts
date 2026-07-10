@@ -312,8 +312,10 @@ export default abstract class RPCClient {
 		return this.request("get_event_by_rowid", { event_rowid })
 	}
 
-	getRelatedEvents(room_id: RoomID, event_id: EventID, relation_type?: RelationType): Promise<RawDBEvent[]> {
-		return this.request("get_related_events", { room_id, event_id, relation_type })
+	getRelatedEvents(
+		room_id: RoomID, event_id: EventID, relation_type?: RelationType, event_type?: EventType,
+	): Promise<RawDBEvent[]> {
+		return this.request("get_related_events", { room_id, event_id, relation_type, event_type })
 	}
 
 	getStickyEvents(room_id: RoomID): Promise<RawDBEvent[]> {

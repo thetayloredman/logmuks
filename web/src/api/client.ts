@@ -379,14 +379,16 @@ export default class Client {
 		)
 	}
 
-	async getRelatedEvents(room: RoomStateStore | RoomID | undefined, eventID: EventID, relationType?: RelationType) {
+	async getRelatedEvents(
+		room: RoomStateStore | RoomID | undefined, eventID: EventID, relationType?: RelationType, eventType?: EventType,
+	) {
 		if (typeof room === "string") {
 			room = this.store.rooms.get(room)
 		}
 		if (!room) {
 			return []
 		}
-		const events = await this.rpc.getRelatedEvents(room.roomID, eventID, relationType)
+		const events = await this.rpc.getRelatedEvents(room.roomID, eventID, relationType, eventType)
 		return events.map(evt => room.getOrApplyEvent(evt))
 	}
 
