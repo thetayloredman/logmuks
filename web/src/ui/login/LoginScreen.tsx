@@ -35,30 +35,6 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 	const [error, setError] = useState("")
 
 	const loginSSO = () => {
-		setLoading(true)
-		fetch("_gomuks/sso", {
-			method: "POST",
-			body: JSON.stringify({ homeserver_url: homeserverURL }),
-			headers: { "Content-Type": "application/json" },
-		}).then(resp => resp.json()).then(
-			resp => {
-				const redirectURL = new URL(window.location.href)
-				if (!redirectURL.pathname.endsWith("/")) {
-					redirectURL.pathname += "/"
-				}
-				redirectURL.pathname += "_gomuks/sso"
-				redirectURL.searchParams.set("gomuksSession", resp.session_id)
-				redirectURL.hash = ""
-				const openURL = new URL(homeserverURL)
-				if (!openURL.pathname.endsWith("/")) {
-					openURL.pathname += "/"
-				}
-				openURL.pathname += "_matrix/client/v3/login/sso/redirect"
-				openURL.searchParams.set("redirectUrl", redirectURL.toString())
-				window.location.href = openURL.toString()
-			},
-			err => setError(`Failed to start SSO login: ${err}`),
-		).finally(() => setLoading(false))
 	}
 
 	const login = (evt: React.SubmitEvent) => {
@@ -122,7 +98,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 		setHomeserverURL(evt.target.value)
 	}
 
-	const supportsSSO = loginFlows?.includes("m.login.sso") ?? false
+	const supportsSSO = false
 	const supportsPassword = loginFlows?.includes("m.login.password")
 	const beeperDomain = homeserverURL.match(beeperServerRegex)?.[1]
 	return <main className="matrix-login">
