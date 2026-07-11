@@ -33,6 +33,12 @@ import {
 	Mentions,
 	MessageEventContent,
 	MutualRoomsResponse,
+	OAuthAuthorizationState,
+	OAuthClientMetadata,
+	OAuthDeviceCodeResponse,
+	OAuthExchangeTokenParams,
+	OAuthGenerateDeviceCodeParams,
+	OAuthGetAuthorizationURLParams,
 	PaginationResponse,
 	ProfileEncryptionInfo,
 	PushRuleKind,
@@ -422,6 +428,28 @@ export default abstract class RPCClient {
 
 	getLoginFlows(homeserver_url: string): Promise<LoginFlowsResponse> {
 		return this.request("get_login_flows", { homeserver_url })
+	}
+
+	oauthRegisterClient(
+		homeserver_url: string, metadata: Omit<OAuthClientMetadata, "client_id">,
+	): Promise<OAuthClientMetadata> {
+		return this.request("oauth_register_client", { homeserver_url, ...metadata })
+	}
+
+	oauthGetAuthorizationURL(params: OAuthGetAuthorizationURLParams): Promise<OAuthAuthorizationState> {
+		return this.request("oauth_get_authorization_url", params)
+	}
+
+	oauthExchangeToken(params: OAuthExchangeTokenParams): Promise<void> {
+		return this.request("oauth_exchange_token", params)
+	}
+
+	oauthGenerateDeviceCode(params: OAuthGenerateDeviceCodeParams): Promise<OAuthDeviceCodeResponse> {
+		return this.request("oauth_generate_device_code", params)
+	}
+
+	oauthPollDeviceCode(homeserver_url: string, device_code: string, client_id?: string): Promise<void> {
+		return this.request("oauth_poll_device_code", { homeserver_url, device_code, client_id })
 	}
 
 	login(homeserver_url: string, username: string, password: string): Promise<void> {

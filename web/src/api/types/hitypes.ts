@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import {
+import type {
 	ContentURI,
 	CreateEventContent,
 	DeviceID,
@@ -31,6 +31,7 @@ import {
 	UnknownEventContent,
 	UserID,
 } from "./mxtypes.ts"
+import type { OAuthServerMetadata } from "./oauth.ts"
 
 export type EventRowID = number
 export type TimelineRowID = number
@@ -214,9 +215,10 @@ export interface ResolveAliasResponse {
 }
 
 export interface LoginFlowsResponse {
-	flows: {
+	flows?: {
 		type: string
 	}[]
+	oauth?: OAuthServerMetadata
 }
 
 export interface EventUnsigned {

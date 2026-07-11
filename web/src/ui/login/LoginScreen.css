@@ -68,4 +68,22 @@ main.matrix-login {
 		padding: 1rem;
 		margin-top: .5rem;
 	}
+
+	> div.oauth-device-code {
+		> .device-code {
+			font-size: 2rem;
+			font-weight: bold;
+			font-family: var(--monospace-font-stack);
+			text-align: center;
+			margin-top: .5rem;
+		}
+
+		> .instructions.sub {
+			font-size: .75rem;
+		}
+
+		> button {
+			padding: .5rem;
+		}
+	}
 }
