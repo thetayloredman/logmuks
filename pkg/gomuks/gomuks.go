@@ -228,7 +228,7 @@ func (gmx *Gomuks) StartClientWithoutExit(ctx context.Context) int {
 		return 11
 	}
 	err = gmx.Client.Start(ctx, userID, nil)
-	if errors.Is(err, mautrix.MUnknownToken) {
+	if errors.Is(err, mautrix.MUnknownToken) || errors.Is(err, mautrix.ErrOAuthInvalidGrant) {
 		gmx.Log.Err(err).Msg("Failed to start client, logging out")
 		err = gmx.Logout(ctx)
 		if err != nil {
