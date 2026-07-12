@@ -293,6 +293,9 @@ func (gmx *Gomuks) Authenticate(w http.ResponseWriter, r *http.Request) {
 }
 
 func ctEqualString(expected, got string) bool {
+	if expected == "" || got == "" {
+		return false
+	}
 	gotHash := sha256.Sum256([]byte(got))
 	expectedHash := sha256.Sum256([]byte(expected))
 	return hmac.Equal(gotHash[:], expectedHash[:])
