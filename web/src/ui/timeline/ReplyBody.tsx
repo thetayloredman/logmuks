@@ -151,15 +151,15 @@ export const ReplyBody = ({
 			{isEditing ? <span className="sender-extra editing-logo">
 				(<EditIcon width="1rem" height="1rem"/> editing)
 			</span> : null}
-			{perMessageSender && <div className="per-message-event-sender">
+			{perMessageSender && <>
 				<span className="via">via</span>
 				<span
-					className={`event-sender sender-color-${getUserColorIndex(event.sender)}`}
+					className={`event-sender original sender-color-${getUserColorIndex(event.sender)}`}
 					title={event.sender}
 				>
 					{getDisplayname(event.sender, memberEvtContent)}
 				</span>
-			</div>}
+			</>}
 			{onClose && <div className="buttons">
 				{onSetSilent && (isExplicitInThread || !isThread) && <TooltipButton
 					tooltipText={isSilent

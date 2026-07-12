@@ -346,17 +346,17 @@ const TimelineEvent = ({
 			>
 				{getDisplayname(evt.sender, renderMemberEvtContent)}
 			</span>
-			{perMessageSender && <div className="per-message-event-sender">
+			{perMessageSender && <>
 				<span className="via">via</span>
 				<span
-					className={`event-sender sender-color-${getUserColorIndex(evt.sender)}`}
+					className={`event-sender original sender-color-${getUserColorIndex(evt.sender)}`}
 					data-target-user={evt.sender}
 					onClick={roomCtx.appendMentionToComposer}
 					title={evt.sender}
 				>
 					{getDisplayname(evt.sender, memberEvtContent)}
 				</span>
-			</div>}
+			</>}
 			<span className="event-time" title={fullTime} onClick={onClickTimestamp}>{shortTime}</span>
 		</div> : <div className="event-time-only" onClick={onClickTimestamp}>
 			<span className="event-time" title={fullTime}>{shortTime}</span>
