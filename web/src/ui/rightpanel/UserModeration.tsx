@@ -18,7 +18,7 @@ import { MoonLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { RoomStateStore, useRoomState } from "@/api/statestore"
 import { MemDBEvent, MembershipAction, PowerLevelEventContent } from "@/api/types"
-import { getUserLevel } from "@/util/powerlevel.ts"
+import { getEventLevel, getUserLevel } from "@/util/powerlevel.ts"
 import { getPowerLevels } from "../menu/util.ts"
 import { BulkRedactModal, ConfirmWithMessageModal, ModalContext } from "../modal"
 import StartDMButton from "./StartDMButton.tsx"
@@ -174,7 +174,7 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 
 	const membership = member?.content.membership || "leave"
 	const isCreator = otherUserPL === Infinity
-	const hasPLPL = ownPL >= (pls.events?.["m.room.power_levels"] ?? pls.state_default ?? 50)
+	const hasPLPL = ownPL >= getEventLevel(pls, "m.room.power_levels", true)
 		&& !isCreator
 		&& (ownPL > otherUserPL || pls.users?.[userID] === undefined || userID === client.userID)
 	return <div className="user-moderation">
@@ -229,7 +229,7 @@ const UserModeration = ({ userID, client, member, room }: UserModerationProps) =
 				<span>Ban</span>
 			</button>
 		))}
-		{hasPL("redact") && (
+		{ownPL >= getEventLevel(pls, "m.room.redaction") && (hasPL("redact") || userID === client.userID) && (
 			<button
 				className="moderation-action dangerous"
 				onClick={openRedactRecentModal}
