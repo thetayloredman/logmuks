@@ -247,7 +247,7 @@ export function stringToRoomStateGUID(str?: string | null): RoomStateGUID | unde
 		return
 	}
 	const [roomID, type, stateKey] = str.split("/")
-	if (!roomID || !type || !stateKey) {
+	if (!roomID || !type || stateKey === undefined) {
 		return
 	}
 	return {
