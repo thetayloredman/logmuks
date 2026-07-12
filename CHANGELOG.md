@@ -1,3 +1,27 @@
+# v26.07 (unreleased)
+
+### Backend
+* Added support for OAuth login.
+* Added command to create polls.
+* Fixed own profile being refetched too often.
+* Fixed initial sync of very big spaces.
+* Fixed direct chat status getting out of sync with `m.direct` in some rare cases.
+* Removed support for legacy SSO (legacy password auth is still supported).
+
+### Web
+* Added support for OAuth login.
+  * Device code login is the default. On servers that don't support it,
+    authorization code redirect login is supported in some limited cases.
+* Added rendering for polls.
+* Added power level changer in user info panel.
+* Added default aspect ratio for custom emojis to avoid timeline jumping when
+  lots of them are loaded.
+* Changed behavior of escape key: it will now clear any reply state in the
+  composer (like it already did for edits) and/or close the right panel before
+  closing the room view.
+* Fixed sidebars not being properly resizable on small screens.
+* Fixed pasting commands (like `/raw`) on mobile.
+
 # v26.06
 
 ### Backend
