@@ -242,7 +242,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 						console.log("OAuth authorization code login successful")
 						delete localStorage.pendingAuthorizationCodeLogin
 						const newURL = new URL(window.location.href)
-						newURL.search = ""
+						newURL.hash = ""
 						history.replaceState({}, "", newURL.toString())
 					},
 					err => {
