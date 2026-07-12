@@ -71,11 +71,21 @@ main.matrix-login {
 
 	> div.oauth-device-code {
 		> .device-code {
+			display: flex;
+			align-items: center;
+			justify-content: center;
 			font-size: 2rem;
 			font-weight: bold;
 			font-family: var(--monospace-font-stack);
-			text-align: center;
 			margin-top: .5rem;
+			text-decoration: none;
+
+			> button {
+				margin: .25rem;
+				padding: .25rem;
+				width: 2rem;
+				height: 2rem;
+			}
 		}
 
 		> .instructions.sub {

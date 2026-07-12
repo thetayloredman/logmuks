@@ -22,6 +22,8 @@ import type {
 	OAuthServerMetadata,
 } from "@/api/types"
 import BeeperLogin from "./BeeperLogin.tsx"
+import CheckIcon from "@/icons/check.svg?react"
+import CopyIcon from "@/icons/copy.svg?react"
 import "./LoginScreen.css"
 
 export interface LoginScreenProps {
@@ -70,6 +72,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 	const [loginFlows, setLoginFlows] = useState<string[] | null>(null)
 	const [oauthServerMeta, setOAuthServerMeta] = useState<OAuthServerMetadata | null>(null)
 	const [deviceCode, setDeviceCode] = useState<OAuthDeviceCodeResponse | null>(null)
+	const [copySuccess, setCopySuccess] = useState(false)
 	const cancelDeviceCodePoll = useRef<(() => void) | null>(null)
 	const skipServerResolution = useRef(false)
 	const [loading, setLoading] = useState<boolean>(false)
@@ -283,6 +286,18 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 		setLoginFlows(null)
 		setHomeserverURL(evt.target.value)
 	}
+	const copyToClipboard = (evt: React.MouseEvent) => {
+		evt.stopPropagation()
+		evt.preventDefault()
+		const code = evt.currentTarget.getAttribute("data-code")
+		navigator.clipboard.writeText(code!).then(
+			() => {
+				setCopySuccess(true)
+				setTimeout(() => setCopySuccess(false), 2000)
+			},
+			err => console.error("Failed to copy to clipboard", err),
+		)
+	}
 
 	const supportsPassword = loginFlows?.includes("m.login.password")
 	const beeperDomain = homeserverURL.match(beeperServerRegex)?.[1]
@@ -351,6 +366,9 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 				</div>
 				<a target="_blank" className="device-code" href={deviceCode.verification_uri_complete}>
 					{deviceCode.user_code}
+					<button onClick={copyToClipboard} data-code={deviceCode.user_code}>
+						{copySuccess ? <CheckIcon /> : <CopyIcon />}
+					</button>
 				</a>
 				<div className="instructions sub">
 					(or open <a target="_blank" href={deviceCode.verification_uri}>{deviceCode.verification_uri}</a> and
@@ -361,7 +379,12 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 					Open <a target="_blank" href={deviceCode.verification_uri}>{deviceCode.verification_uri}</a> and
 					enter the code below:
 				</div>
-				<div className="device-code">{deviceCode.user_code}</div>
+				<div className="device-code">
+					{deviceCode.user_code}
+					<button onClick={copyToClipboard} data-code={deviceCode.user_code}>
+						{copySuccess ? <CheckIcon /> : <CopyIcon />}
+					</button>
+				</div>
 			</>}
 			<button
 				className="mx-login-button"
