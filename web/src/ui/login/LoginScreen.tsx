@@ -113,6 +113,9 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 			homeserver_url: homeserverURL,
 			client_id: clientMeta.client_id,
 		})
+		if (window.gomuksWebWasm) {
+			client.rpc.stop()
+		}
 		window.location.href = resp.url
 	}
 	const loginSSOPollDeviceCode = useCallback((
