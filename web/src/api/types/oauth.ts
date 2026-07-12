@@ -50,6 +50,8 @@ export interface OAuthClientMetadata {
 	token_endpoint_auth_method?: AuthMethod
 }
 
+export type OAuthClientMetadataRequest = Omit<OAuthClientMetadata, "client_id">
+
 export interface OAuthGetAuthorizationURLParams {
 	homeserver_url: string
 	redirect_uri: string
@@ -62,12 +64,14 @@ export interface OAuthGetAuthorizationURLParams {
 export interface OAuthAuthorizationState {
 	state: string
 	code_verifier: string
-	redirect_uri: string
+	url: string
 }
 
-export interface OAuthExchangeTokenParams extends OAuthAuthorizationState {
+export interface OAuthExchangeTokenParams {
 	homeserver_url: string
+	code_verifier: string
 	code: string
+	redirect_uri: string
 	client_id: string
 }
 

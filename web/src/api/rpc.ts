@@ -35,6 +35,7 @@ import {
 	MutualRoomsResponse,
 	OAuthAuthorizationState,
 	OAuthClientMetadata,
+	OAuthClientMetadataRequest,
 	OAuthDeviceCodeResponse,
 	OAuthExchangeTokenParams,
 	OAuthGenerateDeviceCodeParams,
@@ -431,7 +432,7 @@ export default abstract class RPCClient {
 	}
 
 	oauthRegisterClient(
-		homeserver_url: string, metadata: Omit<OAuthClientMetadata, "client_id">,
+		homeserver_url: string, metadata: OAuthClientMetadataRequest,
 	): Promise<OAuthClientMetadata> {
 		return this.request("oauth_register_client", { homeserver_url, ...metadata })
 	}

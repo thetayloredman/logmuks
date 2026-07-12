@@ -15,7 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import type Client from "@/api/client.ts"
-import type { ClientState, OAuthDeviceCodeResponse, OAuthServerMetadata } from "@/api/types"
+import type {
+	ClientState,
+	OAuthClientMetadataRequest,
+	OAuthDeviceCodeResponse,
+	OAuthServerMetadata,
+} from "@/api/types"
 import BeeperLogin from "./BeeperLogin.tsx"
 import "./LoginScreen.css"
 
@@ -34,6 +39,30 @@ const generateDeviceID = () => {
 	return deviceID
 }
 
+const standardClientRegistrationParams: OAuthClientMetadataRequest = {
+	application_type: "native",
+	client_name: "gomuks web",
+	client_uri: "https://gomuks.app/",
+	logo_uri: "https://gomuks.app/favicon.png",
+	grant_types: ["refresh_token", "urn:ietf:params:oauth:grant-type:device_code"],
+	token_endpoint_auth_method: "none",
+}
+
+const clientURI = window.location.origin + window.location.pathname
+const isLocalhost = window.location.hostname === "localhost"
+const isSupportedRedirectURI = window.location.protocol === "https:" || isLocalhost
+
+const redirectClientRegistrationParams: OAuthClientMetadataRequest = {
+	application_type: "native",
+	client_name: "gomuks web",
+	client_uri: isLocalhost ? "https://gomuks.app" : clientURI,
+	logo_uri: isLocalhost ? "https://gomuks.app/favicon.png" : (clientURI + "gomuks.png"),
+	grant_types: ["refresh_token", "authorization_code", "urn:ietf:params:oauth:grant-type:device_code"],
+	token_endpoint_auth_method: "none",
+	response_types: ["code"],
+	redirect_uris: [isLocalhost ? "http://localhost" + window.location.pathname : clientURI],
+}
+
 export const LoginScreen = ({ client }: LoginScreenProps) => {
 	const [username, setUsername] = useState("")
 	const [password, setPassword] = useState("")
@@ -47,14 +76,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 	const [error, setError] = useState("")
 
 	const loginSSOAsync = async () => {
-		const clientMeta = await client.rpc.oauthRegisterClient(homeserverURL, {
-			application_type: "native",
-			client_name: "gomuks web",
-			client_uri: "https://gomuks.app/",
-			logo_uri: "https://gomuks.app/favicon.png",
-			grant_types: ["refresh_token", "urn:ietf:params:oauth:grant-type:device_code"],
-			token_endpoint_auth_method: "none",
-		})
+		const clientMeta = await client.rpc.oauthRegisterClient(homeserverURL, standardClientRegistrationParams)
 		const deviceID = generateDeviceID()
 		const resp = await client.rpc.oauthGenerateDeviceCode({
 			homeserver_url: homeserverURL,
@@ -72,6 +94,26 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 			server_metadata: oauthServerMeta,
 		})
 		await loginSSOPollDeviceCode(homeserverURL, clientMeta.client_id, resp.device_code, resp.interval || 5)
+	}
+	const loginSSORedirect = async () => {
+		const clientMeta = await client.rpc.oauthRegisterClient(homeserverURL, redirectClientRegistrationParams)
+		const deviceID = generateDeviceID()
+		const resp = await client.rpc.oauthGetAuthorizationURL({
+			homeserver_url: homeserverURL,
+			scopes: ["urn:matrix:client:api:*", `urn:matrix:client:device:${deviceID}`],
+			user_id_hint: username,
+			client_id: clientMeta.client_id,
+			redirect_uri: clientURI,
+			response_mode: "fragment",
+		})
+		localStorage.pendingAuthorizationCodeLogin = JSON.stringify({
+			state: resp.state,
+			code_verifier: resp.code_verifier,
+			redirect_uri: clientURI,
+			homeserver_url: homeserverURL,
+			client_id: clientMeta.client_id,
+		})
+		window.location.href = resp.url
 	}
 	const loginSSOPollDeviceCode = useCallback((
 		homeserverURL: string, clientID: string, code: string, interval: number,
@@ -110,9 +152,19 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 		cancelDeviceCodePoll.current = cancel
 	}), [client])
 
+	const loginAnySSOAsync = () => {
+		if (supportsCodeSSO) {
+			return loginSSOAsync()
+		} else if (supportsRedirectSSO) {
+			return loginSSORedirect()
+		} else {
+			return Promise.reject(new Error("No supported SSO method"))
+		}
+	}
+
 	const loginSSO = () => {
 		setLoading(true)
-		loginSSOAsync()
+		loginAnySSOAsync()
 			.catch(err => setError(err.toString()))
 			.finally(() => {
 				setLoading(false)
@@ -161,27 +213,46 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 	}, [client, username, resolveLoginFlows])
 
 	useEffect(() => {
-		if (!localStorage.pendingDeviceCodeLogin) {
-			return
+		if (localStorage.pendingDeviceCodeLogin) {
+			const data = JSON.parse(localStorage.pendingDeviceCodeLogin)
+			skipServerResolution.current = true
+			setDeviceCode(data.code_resp)
+			setLoginFlows(data.login_flows)
+			setOAuthServerMeta(data.server_metadata)
+			setHomeserverURL(data.homeserver_url)
+			setUsername(data.username)
+			setLoading(true)
+			loginSSOPollDeviceCode(
+				data.homeserver_url, data.client_id, data.code_resp.device_code, data.code_resp.interval,
+			).catch(err => {
+				setError(err.toString())
+			}).finally(() => {
+				skipServerResolution.current = false
+				setLoading(false)
+				setDeviceCode(null)
+			})
+		} else if (localStorage.pendingAuthorizationCodeLogin && window.location.hash) {
+			const cache = JSON.parse(localStorage.pendingAuthorizationCodeLogin)
+			const params = new URLSearchParams(window.location.hash.slice(1))
+			const code = params.get("code")
+			if (params.get("state") === cache.state && code) {
+				setLoading(true)
+				client.rpc.oauthExchangeToken({ ...cache, code }).then(
+					() => {
+						console.log("OAuth authorization code login successful")
+						delete localStorage.pendingAuthorizationCodeLogin
+						const newURL = new URL(window.location.href)
+						newURL.search = ""
+						history.replaceState({}, "", newURL.toString())
+					},
+					err => {
+						console.error("OAuth authorization code login failed", err)
+						setError(err.toString())
+					},
+				).finally(() => setLoading(false))
+			}
 		}
-		const data = JSON.parse(localStorage.pendingDeviceCodeLogin)
-		skipServerResolution.current = true
-		setDeviceCode(data.code_resp)
-		setLoginFlows(data.login_flows)
-		setOAuthServerMeta(data.server_metadata)
-		setHomeserverURL(data.homeserver_url)
-		setUsername(data.username)
-		setLoading(true)
-		loginSSOPollDeviceCode(
-			data.homeserver_url, data.client_id, data.code_resp.device_code, data.code_resp.interval,
-		).catch(err => {
-			setError(err.toString())
-		}).finally(() => {
-			skipServerResolution.current = false
-			setLoading(false)
-			setDeviceCode(null)
-		})
-	}, [loginSSOPollDeviceCode])
+	}, [loginSSOPollDeviceCode, client])
 	useEffect(() => {
 		if (
 			!username.startsWith("@")
@@ -212,7 +283,11 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 
 	const supportsPassword = loginFlows?.includes("m.login.password")
 	const beeperDomain = homeserverURL.match(beeperServerRegex)?.[1]
-	const supportsSSO = !!oauthServerMeta?.device_authorization_endpoint
+	const supportsCodeSSO = !!oauthServerMeta?.device_authorization_endpoint
+	const supportsRedirectSSO = !!oauthServerMeta?.authorization_endpoint
+		// Redirects are a pain on wrapped apps, so don't allow it there
+		&& !window.gomuksDesktop && !window.gomuksAndroid && isSupportedRedirectURI
+	const supportsAnySSO = supportsCodeSSO || supportsRedirectSSO
 	return <main className="matrix-login">
 		<h1>gomuks web</h1>
 		<form onSubmit={login}>
@@ -244,7 +319,7 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 				autoComplete="current-password"
 			/>}
 			<div className="buttons">
-				{supportsSSO && !deviceCode && <button
+				{supportsAnySSO && !deviceCode && <button
 					className="mx-login-button primary-color-button"
 					type={supportsPassword ? "button" : "submit"}
 					disabled={loading}
@@ -254,8 +329,8 @@ export const LoginScreen = ({ client }: LoginScreenProps) => {
 					className="mx-login-button primary-color-button"
 					type="submit"
 					disabled={loading}
-				>Login{supportsSSO || beeperDomain ? " with password" : ""}</button>}
-				{loginFlows && !supportsSSO && !supportsPassword && !beeperDomain ? <button
+				>Login{supportsAnySSO || beeperDomain ? " with password" : ""}</button>}
+				{loginFlows && !supportsAnySSO && !supportsRedirectSSO && !supportsPassword && !beeperDomain ? <button
 					className="mx-login-button primary-color-button"
 					type="button"
 					disabled
