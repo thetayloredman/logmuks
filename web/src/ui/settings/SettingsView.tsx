@@ -22,7 +22,7 @@ import {
 } from "@/api/types/preferences"
 import ClientContext from "../ClientContext.ts"
 import CustomCSSInput from "./CustomCSSInput.tsx"
-import KeyExportView from "./KeyExportView.tsx"
+import EncryptionSettings from "./EncryptionSettings.tsx"
 import MiscButtons from "./MiscButtons.tsx"
 import RoomSettings from "./RoomSettings.tsx"
 import SettingsDeck from "./SettingsDeck.tsx"
@@ -55,7 +55,7 @@ function getContent(tab: SettingsTab, setPref: SetPrefFunc, room?: RoomStateStor
 	case SettingsTab.CustomCSS:
 		return <CustomCSSInput setPref={setPref} room={room} />
 	case SettingsTab.Encryption:
-		return <KeyExportView room={room} />
+		return <EncryptionSettings room={room} />
 	case SettingsTab.MiscButtons:
 		return <MiscButtons />
 	default:

@@ -306,6 +306,19 @@ export interface ProfileEncryptionInfo {
 	errors: string[]
 }
 
+export interface OwnDevice {
+	device_id: DeviceID
+	display_name: string
+	last_seen_ip: string
+	last_seen_ts: number
+}
+
+export interface GetOwnDevicesResponse {
+	encryption: ProfileEncryptionInfo
+	devices: OwnDevice[]
+	current_device: ProfileDevice
+}
+
 export interface DBPushRegistration {
 	device_id: string
 	type: "fcm" | "web"

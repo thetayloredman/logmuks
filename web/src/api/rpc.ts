@@ -23,6 +23,7 @@ import {
 	EventID,
 	EventRowID,
 	EventType,
+	GetOwnDevicesResponse,
 	JSONValue,
 	LocalSearchParams,
 	LoginFlowsResponse,
@@ -283,6 +284,10 @@ export default abstract class RPCClient {
 
 	getProfileEncryptionInfo(user_id: UserID): Promise<ProfileEncryptionInfo> {
 		return this.request("get_profile_encryption_info", { user_id })
+	}
+
+	getOwnDevices(): Promise<GetOwnDevicesResponse> {
+		return this.request("get_own_devices", {})
 	}
 
 	trackUserDevices(user_id: UserID): Promise<ProfileEncryptionInfo> {
