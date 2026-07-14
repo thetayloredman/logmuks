@@ -18,7 +18,7 @@ import { ScaleLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
 import { RoomStateStore, usePreferences } from "@/api/statestore"
-import { KeyRestoreProgress, RoomID, RoomType } from "@/api/types"
+import { RoomType } from "@/api/types"
 import {
 	Preference,
 	PreferenceContext,
@@ -27,12 +27,12 @@ import {
 	preferenceContextToInt,
 	preferences,
 } from "@/api/types/preferences"
-import { NonNullCachedEventDispatcher, useEventAsState } from "@/util/eventdispatcher.ts"
+import { useEventAsState } from "@/util/eventdispatcher.ts"
 import useEvent from "@/util/useEvent.ts"
 import ClientContext from "../ClientContext.ts"
 import { LightboxContext, ModalCloseContext, ModalContext, modals } from "../modal"
-import JSONView from "../util/JSONView.tsx"
 import Toggle from "../util/Toggle.tsx"
+import KeyExportView from "./KeyExportView.tsx"
 import CloseIcon from "@/icons/close.svg?react"
 import "./SettingsView.css"
 
@@ -315,186 +315,6 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 	</div>
 }
 
-const AppliedSettingsView = ({ room }: SettingsViewProps) => {
-	const client = use(ClientContext)!
-
-	return <div className="applied-settings">
-		<h3>Raw settings data</h3>
-		<details>
-			<summary><h4>Applied settings in this room</h4></summary>
-			<JSONView data={room.preferences}/>
-		</details>
-		<details open>
-			<summary><h4>Global account settings</h4></summary>
-			<JSONView data={client.store.serverPreferenceCache}/>
-		</details>
-		<details open>
-			<summary><h4>Global device settings</h4></summary>
-			<JSONView data={client.store.localPreferenceCache}/>
-		</details>
-		<details open>
-			<summary><h4>Room account settings</h4></summary>
-			<JSONView data={room.serverPreferenceCache}/>
-		</details>
-		<details open>
-			<summary><h4>Room device settings</h4></summary>
-			<JSONView data={room.localPreferenceCache}/>
-		</details>
-	</div>
-}
-
-export interface KeyRestoreStatus {
-	progress: KeyRestoreProgress
-	connected: boolean
-	done?: "ok" | string
-}
-
-const KeyRestoreProgressModal = ({ evt }: { evt: NonNullCachedEventDispatcher<KeyRestoreStatus> }) => {
-	const status = useEventAsState(evt)
-	const prog = status.progress
-	let statusMessage: string = "Unknown status"
-	let handledCountMessage: string = ""
-
-	const decryptedCount = prog.decrypted + prog.decryption_failed + prog.import_failed
-	const statusMax = prog.total * 3 - (prog.decryption_failed * 2) - (prog.import_failed * 2)
-	const statusValue = prog.stage === "fetching"
-		? undefined
-		: decryptedCount + prog.saved + prog.post_processed
-
-	if (prog.stage === "fetching") {
-		statusMessage = "Fetching keys from server"
-	} else if (prog.stage === "decrypting") {
-		statusMessage = "Decrypting keys"
-		handledCountMessage = `Decrypted ${prog.decrypted} / ${prog.total} keys`
-	} else if (prog.stage === "saving") {
-		statusMessage = "Saving decrypted keys"
-		handledCountMessage = `Saved ${prog.saved} / ${prog.decrypted} keys`
-	} else if (prog.stage === "postprocessing") {
-		statusMessage = "Decrypting pending messages"
-		handledCountMessage = `Post-processed ${prog.post_processed} / ${prog.decrypted} keys`
-	} else if (prog.stage === "done") {
-		statusMessage = "Restore completed"
-		handledCountMessage = `Successfully restored ${prog.post_processed} / ${prog.total} keys`
-	}
-	if (status.done && status.done !== "ok") {
-		statusMessage = status.done
-	} else if (!status.connected) {
-		statusMessage = "Connecting to server"
-	}
-	return <>
-		<div className="status">
-			{statusMessage}
-		</div>
-		{prog.current_room_id && !status.done ? <div className="active-room-id">
-			Currently processing <code>{prog.current_room_id}</code>
-		</div> : null}
-		<progress id="key-backup-restore-progress" value={statusValue} max={statusMax}/>
-
-		<label htmlFor="key-backup-restore-progress">
-			<div>{handledCountMessage}</div>
-			{prog.decryption_failed ? <div>Failed to decrypt {prog.decryption_failed} keys</div> : null}
-			{prog.import_failed ? <div>Failed to import {prog.import_failed} keys</div> : null}
-		</label>
-	</>
-}
-
-const KeyExportView = ({ room }: SettingsViewProps) => {
-	const [passphrase, setPassphrase] = useState("")
-	const [hasFile, setHasFile] = useState(false)
-	const openModal = use(ModalContext)
-	const importBackup = (roomID?: RoomID) => {
-		let path = "_gomuks/keys/restorebackup"
-		if (roomID) {
-			path += `/${encodeURIComponent(roomID)}`
-		}
-		const evtSource = new EventSource(path)
-		let progress: KeyRestoreProgress = {
-			stage: "fetching",
-			current_room_id: "",
-			decrypted: 0,
-			decryption_failed: 0,
-			import_failed: 0,
-			saved: 0,
-			post_processed: 0,
-			total: 0,
-		}
-		let connected = false
-		const disp = new NonNullCachedEventDispatcher<KeyRestoreStatus>({
-			progress,
-			connected,
-		})
-		evtSource.addEventListener("progress", evt => {
-			progress = JSON.parse(evt.data)
-			connected = true
-			disp.emit({ progress, connected })
-		})
-		evtSource.addEventListener("done", evt => {
-			disp.emit({ progress, connected, done: evt.data })
-			evtSource.close()
-		})
-		evtSource.addEventListener("error", () => {
-			disp.emit({ progress, connected, done: "Failed to connect to server" })
-			evtSource.close()
-		})
-		evtSource.addEventListener("close", () => {
-			if (!disp.current.done) {
-				disp.emit({ progress, connected, done: "Connection closed unexpectedly" })
-			}
-			evtSource.close()
-		})
-		openModal({
-			dimmed: true,
-			boxed: true,
-			content: <KeyRestoreProgressModal evt={disp}/>,
-			innerBoxClass: "key-restore-modal",
-			boxClass: "key-restore-modal-wrapper",
-		})
-	}
-	return <div className="key-export">
-		<h3>Key export/import</h3>
-		<input
-			className="passphrase"
-			type="password"
-			value={passphrase}
-			onChange={evt => setPassphrase(evt.target.value)}
-			placeholder="Passphrase"
-		/>
-		<form
-			className="import-buttons"
-			action="_gomuks/keys/import"
-			encType="multipart/form-data"
-			method="post"
-			target="_blank"
-		>
-			<input type="password" name="passphrase" hidden readOnly value={passphrase} />
-			<input
-				className="import-file"
-				type="file"
-				accept="text/plain"
-				name="export"
-				defaultValue=""
-				onChange={evt => setHasFile(!!evt.target.files?.length)}
-			/>
-			<button type="submit" disabled={passphrase == "" || !hasFile}>Import file</button>
-		</form>
-		<div className="export-buttons">
-			<form action="_gomuks/keys/export" method="post" target="_blank">
-				<input type="password" name="passphrase" hidden readOnly value={passphrase} />
-				<button type="submit" disabled={passphrase == ""}>Export all keys</button>
-			</form>
-			<form action={`_gomuks/keys/export/${encodeURIComponent(room.roomID)}`} method="post" target="_blank">
-				<input type="password" name="passphrase" hidden readOnly value={passphrase} />
-				<button type="submit" disabled={passphrase == ""}>Export room keys</button>
-			</form>
-		</div>
-		<hr/>
-		<div className="key-backup-buttons">
-			<button onClick={() => importBackup(room.roomID)}>Import room backup</button>
-			<button onClick={() => importBackup()}>Import entire backup</button>
-		</div>
-	</div>
-}
-
 const SettingsView = ({ room }: SettingsViewProps) => {
 	const roomMeta = useEventAsState(room.meta)
 	const client = use(ClientContext)!
@@ -625,7 +445,6 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 				/> : null)}
 		</div>
 		<CustomCSSInput setPref={setPref} room={room} />
-		<AppliedSettingsView room={room} />
 		<hr/>
 		<KeyExportView room={room} />
 		<hr/>
