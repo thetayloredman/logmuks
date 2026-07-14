@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { CSSProperties, use } from "react"
 import { TabInfo } from "@/api/tabs.ts"
-import { ModalCloseContext } from "../modal"
+import { ModalCloseContext, NestableModalContext, modals } from "../modal"
 
 interface ProfileSwitcherProps {
 	tabs: readonly TabInfo[]
@@ -26,7 +26,11 @@ interface ProfileSwitcherProps {
 
 const ProfileSwitcher = ({ tabs, currentTabID, switchTab, style }: ProfileSwitcherProps) => {
 	const closeModal = use(ModalCloseContext)
+	const openNestableModal = use(NestableModalContext)
 	return <div className="context-menu profile-switcher-menu" style={style}>
+		<button onClick={() => openNestableModal(modals.settings())}>
+			Settings
+		</button>
 		{tabs.map(tab => tab.id !== currentTabID ? <button
 			key={tab.id}
 			onClick={() => {

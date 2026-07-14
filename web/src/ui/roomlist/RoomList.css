@@ -66,10 +66,6 @@ div.space-bar {
 	scrollbar-width: none;
 	padding-top: var(--window-top-margin);
 
-	&.no-profiles {
-		grid-row-end: profile;
-	}
-
 	> div.space-entry {
 		width: 2rem;
 		height: 2rem;

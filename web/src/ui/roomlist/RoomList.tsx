@@ -26,7 +26,7 @@ import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { keyToString } from "../keybindings.ts"
 import { getRightOpeningModalStyleFromButton } from "../menu/util.ts"
-import { ModalContext, modals } from "../modal"
+import { ModalContext, NestableModalContext, modals } from "../modal"
 import Entry from "./Entry.tsx"
 import FakeSpace from "./FakeSpace.tsx"
 import ProfileSwitcher from "./ProfileSwitcher.tsx"
@@ -44,6 +44,7 @@ interface RoomListProps {
 const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 	const client = use(ClientContext)!
 	const openModal = use(ModalContext)
+	const openNestableModal = use(NestableModalContext)
 	const mainScreen = use(MainScreenContext)
 	const roomList = useEventAsState(client.store.roomList)
 	const spaces = useEventAsState(client.store.topLevelSpaces)
@@ -154,7 +155,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				{query !== "" ? <CloseIcon/> : <SearchIcon/>}
 			</button>
 		</div>
-		<div className={`space-bar ${currentTabID ? "has-profiles" : "no-profiles"}`}>
+		<div className="space-bar">
 			<FakeSpace space={null} setSpace={mainScreen.setSpace} isActive={space === null} />
 			{client.store.pseudoSpaces.map(pseudoSpace => <FakeSpace
 				key={pseudoSpace.id}
@@ -172,16 +173,16 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 				onClickUnread={onClickSpaceUnread}
 			/>)}
 		</div>
-		{currentTabID && <div className="profile-switcher">
+		<div className="profile-switcher">
 			<div
 				className="profile-switcher-item"
 				onClick={evt => {
-					openModal({
+					openNestableModal({
 						content: <ProfileSwitcher
 							tabs={tabs}
 							currentTabID={currentTabID}
 							switchTab={switchTab}
-							style={getRightOpeningModalStyleFromButton(evt.currentTarget, 40 * tabs.length + 4)}
+							style={getRightOpeningModalStyleFromButton(evt.currentTarget, 40 * (tabs.length+1) + 4)}
 						/>,
 					})
 				}}
@@ -197,7 +198,7 @@ const RoomList = ({ activeRoomID, space }: RoomListProps) => {
 					alt="Profile switcher"
 				/>
 			</div>
-		</div>}
+		</div>
 		<div className="room-list">
 			{initComplete ? null
 				: <BarLoader cssOverride={{ backgroundColor: "unset" }} width="100%" color="var(--primary-color)" />}

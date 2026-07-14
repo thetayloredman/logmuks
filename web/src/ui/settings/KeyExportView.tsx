@@ -75,7 +75,7 @@ const KeyRestoreProgressModal = ({ evt }: { evt: NonNullCachedEventDispatcher<Ke
 }
 
 interface KeyExportViewProps {
-	room: RoomStateStore
+	room?: RoomStateStore
 }
 
 const KeyExportView = ({ room }: KeyExportViewProps) => {
@@ -162,14 +162,16 @@ const KeyExportView = ({ room }: KeyExportViewProps) => {
 				<input type="password" name="passphrase" hidden readOnly value={passphrase} />
 				<button type="submit" disabled={passphrase == ""}>Export all keys</button>
 			</form>
-			<form action={`_gomuks/keys/export/${encodeURIComponent(room.roomID)}`} method="post" target="_blank">
-				<input type="password" name="passphrase" hidden readOnly value={passphrase} />
-				<button type="submit" disabled={passphrase == ""}>Export room keys</button>
-			</form>
+			{room && (
+				<form action={`_gomuks/keys/export/${encodeURIComponent(room.roomID)}`} method="post" target="_blank">
+					<input type="password" name="passphrase" hidden readOnly value={passphrase} />
+					<button type="submit" disabled={passphrase == ""}>Export room keys</button>
+				</form>
+			)}
 		</div>
 		<hr/>
 		<div className="key-backup-buttons">
-			<button onClick={() => importBackup(room.roomID)}>Import room backup</button>
+			{room && <button onClick={() => importBackup(room.roomID)}>Import room backup</button>}
 			<button onClick={() => importBackup()}>Import entire backup</button>
 		</div>
 	</div>

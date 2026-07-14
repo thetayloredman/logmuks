@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { Suspense, lazy, use, useCallback, useEffect, useRef, useState } from "react"
+import React, { Suspense, lazy, use, useCallback, useEffect, useRef, useState } from "react"
 import { ScaleLoader } from "react-spinners"
 import Client from "@/api/client.ts"
 import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
@@ -142,6 +142,7 @@ interface PreferenceRowProps {
 	globalLocal?: PreferenceValueType
 	roomServer?: PreferenceValueType
 	roomLocal?: PreferenceValueType
+	hideRoom: boolean
 }
 
 const customUIPrefs = new Set([
@@ -149,7 +150,7 @@ const customUIPrefs = new Set([
 ] as (keyof Preferences)[])
 
 const PreferenceRow = ({
-	name, pref, setPref, globalServer, globalLocal, roomServer, roomLocal,
+	name, pref, setPref, globalServer, globalLocal, roomServer, roomLocal, hideRoom,
 }: PreferenceRowProps) => {
 	const prefType = typeof pref.defaultValue
 	if (customUIPrefs.has(name)) {
@@ -208,19 +209,24 @@ const PreferenceRow = ({
 		<div className="name" title={pref.description}>{pref.displayName}</div>
 		{makeContentCell(PreferenceContext.Account, globalServer, inherit = pref.defaultValue)}
 		{makeContentCell(PreferenceContext.Device, globalLocal, inherit = globalServer ?? inherit)}
-		{makeContentCell(PreferenceContext.RoomAccount, roomServer, inherit = globalLocal ?? inherit)}
-		{makeContentCell(PreferenceContext.RoomDevice, roomLocal, inherit = roomServer ?? inherit)}
+		{!hideRoom ? <>
+			{makeContentCell(PreferenceContext.RoomAccount, roomServer, inherit = globalLocal ?? inherit)}
+			{makeContentCell(PreferenceContext.RoomDevice, roomLocal, inherit = roomServer ?? inherit)}
+		</> : <>
+			<div className="empty-cell" />
+			<div className="empty-cell" />
+		</>}
 	</>
 }
 
 interface SettingsViewProps {
-	room: RoomStateStore
+	room?: RoomStateStore
 }
 
-function getActiveCSSContext(client: Client, room: RoomStateStore): PreferenceContext {
-	if (room.localPreferenceCache.custom_css !== undefined) {
+function getActiveCSSContext(client: Client, room?: RoomStateStore): PreferenceContext {
+	if (room?.localPreferenceCache.custom_css !== undefined) {
 		return PreferenceContext.RoomDevice
-	} else if (room.serverPreferenceCache.custom_css !== undefined) {
+	} else if (room?.serverPreferenceCache.custom_css !== undefined) {
 		return PreferenceContext.RoomAccount
 	} else if (client.store.localPreferenceCache.custom_css !== undefined) {
 		return PreferenceContext.Device
@@ -231,7 +237,12 @@ function getActiveCSSContext(client: Client, room: RoomStateStore): PreferenceCo
 
 const Monaco = lazy(() => import("../util/monaco.tsx"))
 
-const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomStateStore }) => {
+interface CustomCSSInputProps {
+	setPref: SetPrefFunc
+	room?: RoomStateStore
+}
+
+const CustomCSSInput = ({ setPref, room }: CustomCSSInputProps) => {
 	const client = use(ClientContext)!
 	const appliedContext = getActiveCSSContext(client, room)
 	const [context, setContext] = useState(appliedContext)
@@ -240,9 +251,9 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 			return client.store.serverPreferenceCache.custom_css
 		} else if (context === PreferenceContext.Device) {
 			return client.store.localPreferenceCache.custom_css
-		} else if (context === PreferenceContext.RoomAccount) {
+		} else if (context === PreferenceContext.RoomAccount && room) {
 			return room.serverPreferenceCache.custom_css
-		} else if (context === PreferenceContext.RoomDevice) {
+		} else if (context === PreferenceContext.RoomDevice && room) {
 			return room.localPreferenceCache.custom_css
 		}
 	}
@@ -287,8 +298,10 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 			<select value={context} onChange={onChangeContext}>
 				<option value={PreferenceContext.Account}>Account</option>
 				<option value={PreferenceContext.Device}>Device</option>
-				<option value={PreferenceContext.RoomAccount}>Room (account)</option>
-				<option value={PreferenceContext.RoomDevice}>Room (device)</option>
+				{room && <>
+					<option value={PreferenceContext.RoomAccount}>Room (account)</option>
+					<option value={PreferenceContext.RoomDevice}>Room (device)</option>
+				</>}
 			</select>
 			{preferenceContextToInt(context) < preferenceContextToInt(appliedContext) &&
 				<span className="warning">
@@ -316,7 +329,7 @@ const CustomCSSInput = ({ setPref, room }: { setPref: SetPrefFunc, room: RoomSta
 }
 
 const SettingsView = ({ room }: SettingsViewProps) => {
-	const roomMeta = useEventAsState(room.meta)
+	const roomMeta = useEventAsState(room?.meta)
 	const client = use(ClientContext)!
 	const closeModal = use(ModalCloseContext)
 	const openModal = use(ModalContext)
@@ -337,12 +350,12 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			if (key === "web_push") {
 				client.registerWebPush()
 			}
-		} else if (context === PreferenceContext.RoomAccount) {
+		} else if (context === PreferenceContext.RoomAccount && room) {
 			client.rpc.setAccountData("fi.mau.gomuks.preferences", {
 				...room.serverPreferenceCache,
 				[key]: value,
 			}, room.roomID)
-		} else if (context === PreferenceContext.RoomDevice) {
+		} else if (context === PreferenceContext.RoomDevice && room) {
 			if (value === undefined) {
 				delete room.localPreferenceCache[key]
 			} else {
@@ -359,7 +372,7 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 		}
 	}
 	const onClickLeave = () => {
-		if (window.confirm(`Really leave ${room.meta.current.name}?`)) {
+		if (room && window.confirm(`Really leave ${room.meta.current.name}?`)) {
 			client.rpc.leaveRoom(room.roomID).then(
 				() => {
 					console.info("Successfully left", room.roomID)
@@ -370,7 +383,9 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 		}
 	}
 	const openDevtools = () => {
-		openModal(modals.roomStateExplorer(room))
+		if (room) {
+			openModal(modals.roomStateExplorer(room))
+		}
 	}
 	const onClickOpenCSSApp = () => {
 		client.rpc.requestOpenIDToken().then(
@@ -382,19 +397,19 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			err => window.alert(`Failed to request OpenID token: ${err}`),
 		)
 	}
-	const previousRoomID = roomMeta.creation_content?.predecessor?.room_id
+	const previousRoomID = roomMeta?.creation_content?.predecessor?.room_id
 	const openPredecessorRoom = () => {
 		window.mainScreenContext.setActiveRoom(previousRoomID!)
 		closeModal()
 	}
-	usePreferences(client.store, room)
+	usePreferences(client.store, room ?? null)
 	const globalServer = client.store.serverPreferenceCache
 	const globalLocal = client.store.localPreferenceCache
-	const roomServer = room.serverPreferenceCache
-	const roomLocal = room.localPreferenceCache
+	const roomServer = room?.serverPreferenceCache
+	const roomLocal = room?.localPreferenceCache
 	return <>
 		<h2>Settings</h2>
-		<div className="room-details">
+		{roomMeta && <div className="room-details">
 			<img
 				className="avatar large"
 				loading="lazy"
@@ -405,7 +420,7 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			/>
 			<div>
 				{roomMeta.name && <div className="room-name">{roomMeta.name}</div>}
-				<code>{room.roomID}</code>
+				<code>{room!.roomID}</code>
 				<div>{roomMeta.topic}</div>
 				<div className="room-buttons">
 					<button className="leave-room" onClick={onClickLeave}>Leave room</button>
@@ -425,13 +440,18 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 						</button>}
 				</div>
 			</div>
-		</div>
+		</div>}
 		<div className="preference-table">
 			<div className="name" style={{ height: "2.5rem" }}>Name</div>
 			<div className="name">Account</div>
 			<div className="name">Device</div>
-			<div className="name">Room (account)</div>
-			<div className="name">Room (device)</div>
+			{room ? <>
+				<div className="name">Room (account)</div>
+				<div className="name">Room (device)</div>
+			</> : <>
+				<div className="name"></div>
+				<div className="name"></div>
+			</>}
 			{Object.entries(preferences).map(([key, pref]) =>
 				!pref.hidden ? <PreferenceRow
 					key={key}
@@ -440,8 +460,9 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 					setPref={setPref}
 					globalServer={globalServer[key as keyof Preferences]}
 					globalLocal={globalLocal[key as keyof Preferences]}
-					roomServer={roomServer[key as keyof Preferences]}
-					roomLocal={roomLocal[key as keyof Preferences]}
+					roomServer={roomServer?.[key as keyof Preferences]}
+					roomLocal={roomLocal?.[key as keyof Preferences]}
+					hideRoom={!room}
 				/> : null)}
 		</div>
 		<CustomCSSInput setPref={setPref} room={room} />

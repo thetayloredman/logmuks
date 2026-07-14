@@ -110,7 +110,7 @@ export function createRoom(): NonNestableModalState {
 	}
 }
 
-export function settings(room: RoomStateStore): NestableModalState {
+export function settings(room?: RoomStateStore): NestableModalState {
 	return {
 		dimmed: true,
 		boxed: true,
