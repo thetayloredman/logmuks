@@ -1,5 +1,5 @@
 // gomuks - A Matrix client written in Go.
-// Copyright (C) 2024 Tulir Asokan
+// Copyright (C) 2026 Tulir Asokan
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { use, useCallback } from "react"
+import { JSX, use, useCallback, useState } from "react"
 import { RoomStateStore } from "@/api/statestore"
 import {
 	PreferenceContext,
@@ -33,6 +33,34 @@ export type SetPrefFunc =
 
 interface SettingsViewProps {
 	room?: RoomStateStore
+}
+
+enum SettingsTab {
+	RoomSettings,
+	Preferences,
+	CustomCSS,
+	Encryption,
+	MiscButtons,
+}
+
+function getContent(tab: SettingsTab, setPref: SetPrefFunc, room?: RoomStateStore): JSX.Element {
+	switch (tab) {
+	case SettingsTab.RoomSettings:
+		if (!room) {
+			return <div className="settings-tab">Missing room</div>
+		}
+		return <RoomSettings room={room} />
+	case SettingsTab.Preferences:
+		return <SettingsDeck setPref={setPref} room={room} />
+	case SettingsTab.CustomCSS:
+		return <CustomCSSInput setPref={setPref} room={room} />
+	case SettingsTab.Encryption:
+		return <KeyExportView room={room} />
+	case SettingsTab.MiscButtons:
+		return <MiscButtons />
+	default:
+		return <div className="settings-tab">Unknown tab</div>
+	}
 }
 
 const SettingsView = ({ room }: SettingsViewProps) => {
@@ -67,16 +95,23 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			}
 		}
 	}, [client, room])
+	const [tab, setTab] = useState<SettingsTab>(room ? SettingsTab.RoomSettings : SettingsTab.Preferences)
+	const makeTabButton = (toTab: SettingsTab, text: JSX.Element | string) => {
+		return <button onClick={() => setTab(toTab)} className={toTab === tab ? "active" : ""}>
+			{text}
+		</button>
+	}
 	return <>
-		<h2>Settings</h2>
-		{room && <RoomSettings room={room} />}
-		<SettingsDeck setPref={setPref} room={room} />
-		<hr/>
-		<CustomCSSInput setPref={setPref} room={room} />
-		<hr/>
-		<KeyExportView room={room} />
-		<hr/>
-		<MiscButtons />
+		<nav className="tabs">
+			{room && makeTabButton(SettingsTab.RoomSettings, "Room settings")}
+			{makeTabButton(SettingsTab.Preferences, "Preferences")}
+			{makeTabButton(SettingsTab.CustomCSS, "Custom CSS")}
+			{makeTabButton(SettingsTab.Encryption, "Encryption")}
+			{makeTabButton(SettingsTab.MiscButtons, "Misc buttons")}
+		</nav>
+		<div className="settings-tab">
+			{getContent(tab, setPref, room)}
+		</div>
 	</>
 }
 
