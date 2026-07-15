@@ -52,16 +52,55 @@ div.settings-view {
 div.settings-tab > div.room-details {
 	display: flex;
 	gap: .5rem;
+	flex-direction: column;
 
-	img.avatar {
-		margin-top: 0.5rem;
-	}
+	> div.general-info {
+		display: grid;
+		gap: .5rem;
+		grid-template:
+			"avatar roomid" auto
+			"avatar name" auto
+			"avatar topic" auto
+			"empty  save" auto
+			/ 5rem 1fr;
 
-	div.room-name {
-		font-size: 1.2rem;
-		font-weight: bold;
-		text-overflow: ellipsis;
-		text-wrap: nowrap;
+		> img {
+			grid-area: avatar;
+		}
+
+		> code {
+			grid-area: roomid;
+			font-size: .75rem;
+			color: var(--semisecondary-text-color);
+		}
+
+		> input, > textarea {
+			border-radius: .5rem;
+			border: 1px solid var(--border-color);
+			padding: .5rem;
+			outline: none;
+		}
+
+		> input.room-name-input {
+			grid-area: name;
+		}
+
+		> textarea.room-topic-input {
+			grid-area: topic;
+			resize: vertical;
+			height: 5rem;
+		}
+
+		> div.buttons {
+			grid-area: save;
+			display: flex;
+			gap: .5rem;
+			justify-content: right;
+
+			> button {
+				padding: .5rem 1rem;
+			}
+		}
 	}
 
 	div.room-buttons {
