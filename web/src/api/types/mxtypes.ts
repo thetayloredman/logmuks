@@ -596,3 +596,11 @@ export interface PutPushRuleRequest {
 	conditions?: UnknownPushRuleCondition[]
 	pattern?: string
 }
+
+export interface JoinRulesEventContent {
+	join_rule: JoinRule
+	allow?: {
+		type: "m.room_membership"
+		room_id: RoomID
+	}[]
+}

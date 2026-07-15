@@ -51,27 +51,27 @@ div.settings-view {
 
 div.settings-tab > div.room-details {
 	display: flex;
-	gap: .5rem;
+	gap: 1rem;
 	flex-direction: column;
+
+	> div.header {
+		> code.room-id {
+			font-size: .75rem;
+			color: var(--semisecondary-text-color);
+		}
+	}
 
 	> div.general-info {
 		display: grid;
 		gap: .5rem;
 		grid-template:
-			"avatar roomid" auto
-			"avatar name" auto
-			"avatar topic" auto
-			"empty  save" auto
-			/ 5rem 1fr;
+			"name   avatar" auto
+			"topic  avatar" auto
+			/ 1fr  8rem;
 
 		> img {
 			grid-area: avatar;
-		}
-
-		> code {
-			grid-area: roomid;
-			font-size: .75rem;
-			color: var(--semisecondary-text-color);
+			justify-self: center;
 		}
 
 		> input, > textarea {
@@ -90,16 +90,32 @@ div.settings-tab > div.room-details {
 			resize: vertical;
 			height: 5rem;
 		}
+	}
 
-		> div.buttons {
-			grid-area: save;
-			display: flex;
-			gap: .5rem;
-			justify-content: right;
+	> div.boxes {
+		display: flex;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
 
-			> button {
-				padding: .5rem 1rem;
+	div.history-visibility, div.join-rules {
+		display: flex;
+		flex-direction: column;
+
+		> label {
+			> input {
+				margin-right: .375rem;
 			}
+		}
+	}
+
+	> div.save-buttons {
+		grid-area: save;
+		display: flex;
+		gap: .5rem;
+
+		> button {
+			padding: .5rem 1rem;
 		}
 	}
 
@@ -109,13 +125,16 @@ div.settings-tab > div.room-details {
 
 		button {
 			padding: .5rem 1rem;
+		}
+	}
 
-			&.leave-room {
-				&:hover, &:focus {
-					background-color: var(--error-color);
-					color: var(--inverted-text-color);
-				}
-			}
+	button.leave-room {
+		padding: .5rem;
+		width: 7rem;
+
+		&:hover, &:focus {
+			background-color: var(--error-color);
+			color: var(--inverted-text-color);
 		}
 	}
 }
