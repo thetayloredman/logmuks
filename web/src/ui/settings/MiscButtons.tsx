@@ -44,6 +44,7 @@ const MiscButtons = () => {
 		{!window.gomuksAndroid &&
 			<button onClick={client.registerURIHandler}>Register <code>matrix:</code> URI handler</button>
 		}
+		<div className="spacer" />
 		<button className="logout" onClick={onClickLogout}>Logout</button>
 	</div>
 }

@@ -1,5 +1,6 @@
 div.settings-view-box {
 	padding: 0 !important;
+	height: 100%;
 }
 
 div.settings-view {
@@ -242,18 +243,20 @@ div.settings-tab > div.key-export {
 div.settings-tab > div.misc-buttons {
 	display: flex;
 	flex-direction: column;
+	height: 100%;
+
+	> div.spacer {
+		flex-grow: 1;
+		min-height: 2rem;
+	}
 
 	> button {
 		padding: .5rem 1rem;
 		display: block;
 
-		&.logout {
-			margin-top: 2rem;
-
-			&:hover, &:focus {
-				background-color: var(--error-color);
-				color: var(--inverted-text-color);
-			}
+		&.logout:hover, &.logout:focus {
+			background-color: var(--error-color);
+			color: var(--inverted-text-color);
 		}
 	}
 }
