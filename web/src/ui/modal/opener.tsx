@@ -44,13 +44,17 @@ export function mediaUpload(
 	doUploadFile: UploadFileFunc,
 	isEncrypted: boolean = false,
 	isVoice: boolean = false,
+	onClose?: () => void,
 ): NonNestableModalState {
 	const blobURL = URL.createObjectURL(file)
 	return {
 		dimmed: true,
 		boxed: true,
 		innerBoxClass: "media-upload-modal-wrapper",
-		onClose: () => URL.revokeObjectURL(blobURL),
+		onClose: () => {
+			URL.revokeObjectURL(blobURL)
+			onClose?.()
+		},
 		content: <MediaUploadDialog
 			file={file}
 			blobURL={blobURL}

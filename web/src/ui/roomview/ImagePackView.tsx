@@ -140,12 +140,12 @@ const ImagePackEditor = ({ id, pack }: ImagePackEditorProps) => {
 	const saveImage = (oldItem: ImagePackEntryWithID | null, newItem: ImagePackEntryWithID | null) => {
 		if (newItem === null) {
 			if (oldItem !== null) {
-				setImages(images.filter(img => img.id !== oldItem.id))
+				setImages(images => images.filter(img => img.id !== oldItem.id))
 			}
 		} else if (oldItem !== null) {
-			setImages(images.map(img => img.id === oldItem.id ? newItem : img))
+			setImages(images => images.map(img => img.id === oldItem.id ? newItem : img))
 		} else {
-			setImages([...images, newItem])
+			setImages(images => [...images, newItem])
 		}
 	}
 	const openEditor = (item: ImagePackEntryWithID | null) => {
@@ -246,6 +246,11 @@ const ImagePackItem = ({ item, openEditor }: ImagePackItemProps) => {
 	</div>
 }
 
+const filenameToShortcode = (filename: string) => {
+	const name = filename.split(".")[0]
+	return name.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 100)
+}
+
 const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorProps) => {
 	const [url, setURL] = useState(ensureString(item?.url))
 	const [body, setBody] = useState(ensureString(item?.body))
@@ -253,6 +258,7 @@ const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorP
 	const [info, setInfo] = useState(item?.info)
 	const [usages, setUsages] = useState(() => item?.usage ? new Set(ensureStringArray(item.usage)) : null)
 	const [uploading, setUploading] = useState(false)
+	const [nextFiles, setNextFiles] = useState<File[] | null>(null)
 	const openLightbox = use(LightboxContext)!
 	const closeModal = use(ModalCloseContext)
 	const openModal = use(ModalContext)
@@ -265,14 +271,21 @@ const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorP
 		info,
 		usage: usages ? Array.from(usages) as ImagePackUsage[] : undefined,
 	}
-	const doUploadFile = (file: Blob, filename: string, encodingOpts?: MediaEncodingOptions) => {
+	const doUploadFile = (
+		nextFiles: File[], file: Blob, filename: string, encodingOpts?: MediaEncodingOptions,
+	) => {
 		setUploading(true)
 		const unsetUploading = () => setUploading(false)
 		const uploadComplete = (media: MediaMessageEventContent) => {
 			setURL(media.url ?? "")
 			setInfo(media.info)
+			setID(id => id || filenameToShortcode(media.filename || media.body || filename))
+			setNextFiles(nextFiles.length > 0 ? nextFiles : null)
 		}
-		const uploadFailed = (err: Error) => window.alert(`Failed to upload file: ${err.message}`)
+		const uploadFailed = (err: Error) => {
+			window.alert(`Failed to upload file: ${err.message}`)
+			setNextFiles(null)
+		}
 		if (client.rpc.rpcMediaUpload) {
 			client.rpc.uploadMedia(file, filename, false)
 				.then(uploadComplete, uploadFailed)
@@ -297,16 +310,44 @@ const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorP
 			.then(async resp => uploadComplete(await resp.json()), uploadFailed)
 			.finally(unsetUploading)
 	}
+	const openFileUploadModal = (file: File, nextFiles: File[]) => {
+		let didUpload = false
+		openModal(modals.mediaUpload(
+			file,
+			(...args) => {
+				didUpload = true
+				doUploadFile(nextFiles, ...args)
+			},
+			false,
+			false,
+			() => !didUpload && setNextFiles(null),
+		))
+	}
 	const openFileUpload = (evt: React.ChangeEvent<HTMLInputElement>) => {
-		const file = evt.target.files?.[0]
+		if (!evt.target.files) {
+			return
+		}
+		const file = evt.target.files[0]
 		if (!file) {
 			return
 		}
-		openModal(modals.mediaUpload(file, doUploadFile))
+		const nextFiles: File[] = []
+		for (let i = 1; i < evt.target.files.length; i++) {
+			nextFiles.push(evt.target.files[i])
+		}
+		openFileUploadModal(file, nextFiles)
 	}
 	const doSave = () => {
 		save(item, newItem)
-		closeModal()
+		if (nextFiles) {
+			setURL("")
+			setBody("")
+			setID("")
+			setInfo(undefined)
+			openFileUploadModal(nextFiles[0], nextFiles.slice(1))
+		} else {
+			closeModal()
+		}
 	}
 	const doDelete = () => {
 		save(item, null)
@@ -316,13 +357,21 @@ const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorP
 		{url && <img src={getMediaURL(url)} alt="Image for the entry" onClick={openLightbox} />}
 		<div className="input-fields">
 			<label htmlFor="image-editor-upload">Upload image:</label>
-			<input disabled={uploading} id="image-editor-upload" type="file" value="" onChange={openFileUpload} />
+			<input
+				disabled={uploading}
+				id="image-editor-upload"
+				type="file"
+				value=""
+				multiple={!item}
+				onChange={openFileUpload}
+			/>
 			<label htmlFor="image-editor-id">Shortcode:</label>
 			<input
 				id="image-editor-id"
 				type="text"
 				value={id}
 				onChange={evt => setID(evt.target.value)}
+				pattern="^(?:\w|-){1,100}$"
 				placeholder="The :shortcode: for this image (excluding colons)"
 				required
 			/>
@@ -347,7 +396,7 @@ const ImagePackItemEditor = ({ item, save, defaultUsages }: ImagePackItemEditorP
 				<button onClick={() => closeModal()} className="dangerous">Discard</button>
 				{item && <button onClick={doDelete} className="dangerous">Delete</button>}
 			</div>
-			<button onClick={doSave} disabled={!url || !id}>Save</button>
+			<button onClick={doSave} disabled={!url || !id}>Save{nextFiles ? " and upload next" : ""}</button>
 		</div>
 	</>
 }
