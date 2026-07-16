@@ -2,7 +2,7 @@ module go.mau.fi/gomuks
 
 go 1.25.0
 
-toolchain go1.26.4
+toolchain go1.26.5
 
 tool go.mau.fi/util/cmd/maubuild
 
@@ -19,28 +19,28 @@ require (
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/lucasb-eyer/go-colorful v1.4.0
 	github.com/mattn/go-runewidth v0.0.24
-	github.com/mattn/go-sqlite3 v1.14.45
+	github.com/mattn/go-sqlite3 v1.14.48
 	github.com/rivo/uniseg v0.4.7
 	github.com/rs/zerolog v1.35.1
-	github.com/strukturag/libheif v1.23.0
+	github.com/strukturag/libheif v1.23.1
 	github.com/tidwall/gjson v1.19.0
 	github.com/tidwall/sjson v1.2.5
-	github.com/yuin/goldmark v1.8.2
+	github.com/yuin/goldmark v1.8.4
 	github.com/zyedidia/clipboard v1.0.4
 	go.mau.fi/goheif v0.1.0
 	go.mau.fi/mauview v0.3.0
-	go.mau.fi/util v0.9.10
+	go.mau.fi/util v0.9.11
 	go.mau.fi/webp v0.3.0
 	go.mau.fi/zeroconfig v0.2.0
-	golang.org/x/crypto v0.53.0
-	golang.org/x/image v0.42.0
-	golang.org/x/net v0.56.0
-	golang.org/x/sys v0.46.0
-	golang.org/x/text v0.38.0
+	golang.org/x/crypto v0.54.0
+	golang.org/x/image v0.44.0
+	golang.org/x/net v0.57.0
+	golang.org/x/sys v0.47.0
+	golang.org/x/text v0.40.0
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2
 	gopkg.in/yaml.v3 v3.0.1
 	maunium.net/go/mauflag v1.0.0
-	maunium.net/go/mautrix v0.28.2-0.20260712094823-f6531777f56c
+	maunium.net/go/mautrix v0.29.0
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
@@ -54,12 +54,12 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
-	github.com/petermattis/goid v0.0.0-20260330135022-df67b199bc81 // indirect
+	github.com/petermattis/goid v0.0.0-20260713124913-97594f28f5ca // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
-	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
-	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/term v0.44.0 // indirect
+	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 // indirect
+	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
