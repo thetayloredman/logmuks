@@ -188,6 +188,23 @@ div.html-body {
 			margin: 0;
 		}
 	}
+
+	ul {
+		padding-inline-start: 0;
+
+		li {
+			margin-inline-start: 2rem;
+		}
+
+		li:has(> input[type="checkbox"]) {
+			margin-inline-start: .625rem;
+			list-style: none;
+		}
+	}
+
+	ol {
+		padding-inline-start: 2rem;
+	}
 }
 
 div.media-container {
