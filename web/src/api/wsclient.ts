@@ -55,6 +55,7 @@ export default class WSClient extends RPCClient {
 	#pingInterval: ReturnType<typeof setInterval> | null = null
 	#lastReceivedEvt: number = 0
 	#resumeRunID: string = ""
+	#running = false
 	#stopped = false
 	#reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 	#connectFailures: number = 0
@@ -75,6 +76,10 @@ export default class WSClient extends RPCClient {
 	}
 
 	start() {
+		if (this.#running) {
+			throw new Error("Tried to start new websocket while one is already running")
+		}
+		this.#running = true
 		if (this.compress) {
 			const dc = new DecompressionStream("deflate-raw")
 			this.#decompWriter = dc.writable.getWriter()
@@ -126,6 +131,10 @@ export default class WSClient extends RPCClient {
 		if (this.#pingInterval !== null) {
 			clearInterval(this.#pingInterval)
 			this.#pingInterval = null
+		}
+		if (this.#reconnectTimeout !== null) {
+			clearTimeout(this.#reconnectTimeout)
+			this.#reconnectTimeout = null
 		}
 		this.#conn?.close(1000, "Client closed")
 	}
@@ -257,6 +266,7 @@ export default class WSClient extends RPCClient {
 			`Websocket closed: ${ev.code} ${ev.reason}`,
 			Date.now() + backoff,
 		)
+		this.#running = false
 		if (willReconnect) {
 			console.log("Attempting to reconnect in", backoff, "ms")
 			this.#reconnectTimeout = setTimeout(() => {
