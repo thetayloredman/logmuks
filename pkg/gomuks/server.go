@@ -18,6 +18,7 @@ package gomuks
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -39,6 +40,7 @@ import (
 	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/exhttp"
 	"go.mau.fi/util/jsontime"
+	"go.mau.fi/util/ptr"
 	"go.mau.fi/util/requestlog"
 	"golang.org/x/crypto/bcrypt"
 	"maunium.net/go/mautrix"
@@ -365,37 +367,76 @@ func (gmx *Gomuks) GetCodeblockCSS(w http.ResponseWriter, r *http.Request) {
 	_ = hicli.CodeBlockFormatter.WriteCSS(w, style)
 }
 
+var ErrTimeDesync = mautrix.RespError{
+	ErrCode:    "FI.MAU.GOMUKS.TIME_DESYNC",
+	Err:        "Client clock is too far in the future",
+	StatusCode: http.StatusBadRequest,
+}
+
+var ErrRequestExpired = mautrix.RespError{
+	ErrCode:    "FI.MAU.GOMUKS.REQUEST_EXPIRED",
+	Err:        "Client clock is too far in the past or request cache has already expired",
+	StatusCode: http.StatusBadRequest,
+}
+
+func checkClientTS(w http.ResponseWriter, clientTSStr string) bool {
+	clientTSInt, err := strconv.ParseInt(clientTSStr, 10, 64)
+	if err != nil {
+		mautrix.MInvalidParam.WithMessage("Failed to parse client timestamp: %v", err).Write(w)
+	} else if clientTS := time.UnixMilli(clientTSInt); time.Until(clientTS) > ExecutionBufferCleanupDelay/10 {
+		ErrTimeDesync.Write(w)
+	} else if time.Since(clientTS) > ExecutionBufferCleanupDelay/2 {
+		ErrRequestExpired.Write(w)
+	} else {
+		return true
+	}
+	return false
+}
+
 func (gmx *Gomuks) ExecCommand(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	txnID := q.Get("txn_id")
+	clientTSStr := q.Get("start_ts")
+	if txnID != "" && !checkClientTS(w, clientTSStr) {
+		return
+	}
 	log := hlog.FromRequest(r)
 	reqPayload, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Err(err).Msg("Failed to read command request body")
-		mautrix.MBadJSON.WithMessage("Failed to read request body: %w", err).Write(w)
+		mautrix.MBadJSON.WithMessage("Failed to read request body: %v", err).Write(w)
 		return
 	} else if !json.Valid(reqPayload) {
 		mautrix.MBadJSON.WithMessage("Request body is not valid JSON").Write(w)
 		return
 	}
-	resp := gmx.Client.SubmitJSONCommand(r.Context(), &hicli.JSONCommand{
-		Command: jsoncmd.Name(r.PathValue("command")),
-		Data:    reqPayload,
+	respData, respErr := gmx.execBuffer.Do(r.Context(), txnID, func(ctx context.Context) (json.RawMessage, *mautrix.RespError) {
+		resp := gmx.Client.SubmitJSONCommand(ctx, &hicli.JSONCommand{
+			Command: jsoncmd.Name(r.PathValue("command")),
+			Data:    reqPayload,
+		})
+		switch resp.Command {
+		case jsoncmd.RespError:
+			var errString string
+			_ = json.Unmarshal(resp.Data, &errString)
+			return nil, &mautrix.RespError{
+				ErrCode:    "FI.MAU.GOMUKS.COMMAND_ERROR",
+				Err:        errString,
+				StatusCode: http.StatusTeapot,
+			}
+		case jsoncmd.RespSuccess:
+			return resp.Data, nil
+		default:
+			log.Warn().Stringer("response_command", resp.Command).
+				Msg("Received unknown response command from JSON command execution")
+			return nil, ptr.Ptr(mautrix.MUnknown.WithMessage("Unexpected response command: %s", resp.Command))
+		}
 	})
-	switch resp.Command {
-	case jsoncmd.RespError:
-		var errString string
-		_ = json.Unmarshal(resp.Data, &errString)
-		mautrix.RespError{
-			ErrCode:    "FI.MAU.GOMUKS.COMMAND_ERROR",
-			Err:        errString,
-			StatusCode: http.StatusTeapot,
-		}.Write(w)
-	case jsoncmd.RespSuccess:
+	if respErr != nil {
+		respErr.Write(w)
+	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(resp.Data)
-	default:
-		log.Warn().Stringer("response_command", resp.Command).
-			Msg("Received unknown response command from JSON command execution")
-		mautrix.MUnknown.WithMessage("Unexpected response command: %s", resp.Command).Write(w)
+		_, _ = w.Write(respData)
 	}
 }

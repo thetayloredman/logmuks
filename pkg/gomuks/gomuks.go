@@ -20,6 +20,7 @@ import (
 	"cmp"
 	"context"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -72,6 +73,7 @@ type Gomuks struct {
 	stopChan chan struct{}
 
 	EventBuffer *EventBuffer
+	execBuffer  *ExecutionBuffer[json.RawMessage, *mautrix.RespError]
 
 	// Maps from temporary MXC URIs from by the media repository for URL
 	// previews to permanent MXC URIs suitable for sending in an inline preview
@@ -87,6 +89,8 @@ func NewGomuks() *Gomuks {
 		temporaryMXCToPermanent:         map[id.ContentURIString]id.ContentURIString{},
 		temporaryMXCToEncryptedFileInfo: map[id.ContentURIString]*event.EncryptedFileInfo{},
 		temporaryMXCToBlurhash:          map[id.ContentURIString]string{},
+
+		execBuffer: NewExecutionBuffer[json.RawMessage, *mautrix.RespError](context.Background()),
 	}
 	gmx.GetDBConfig = func() dbutil.PoolConfig {
 		return dbutil.PoolConfig{
