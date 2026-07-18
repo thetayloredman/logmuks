@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -40,13 +39,8 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var resumeFrom, resumeRunID int64
-	lastEventID := r.Header.Get("Last-Event-ID")
-	if lastEventID != "" {
-		parts := strings.Split(lastEventID, "_")
-		resumeRunID, _ = strconv.ParseInt(parts[0], 10, 64)
-		resumeFrom, _ = strconv.ParseInt(parts[1], 10, 64)
-	}
+	resumeFrom, _ := strconv.ParseInt(r.URL.Query().Get("last_received_event"), 10, 64)
+	resumeRunID, _ := strconv.ParseInt(r.URL.Query().Get("run_id"), 10, 64)
 	if resumeRunID != runID {
 		resumeFrom = 0
 	}

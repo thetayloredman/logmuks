@@ -18,7 +18,6 @@ package gomuks
 
 import (
 	"encoding/json"
-	"fmt"
 	"iter"
 	"net/http"
 	"slices"
@@ -51,11 +50,7 @@ var pingBytes = []byte(":\n\n")
 var dataBytes = []byte("data:")
 
 func (w *sseWriter) write(cmd *BufferedEvent) (err error) {
-	if cmd.RequestID != 0 {
-		_, err = fmt.Fprintf(w.w, "id:%d_%d\ndata:", runID, cmd.RequestID)
-	} else {
-		_, err = w.w.Write(dataBytes)
-	}
+	_, err = w.w.Write(dataBytes)
 	if err != nil {
 		return
 	}

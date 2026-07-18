@@ -23,18 +23,44 @@ const PING_INTERVAL = 60_000
 export default class SSEClient extends RPCClient {
 	#conn: EventSource | null = null
 	#pingInterval: ReturnType<typeof setInterval> | null = null
+	#reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 	#lastReceivedEvt?: number
+	#lastAckedEvt?: number
 	#listenerID?: number
 	#resumeRunID?: string
+	#stopped = true
+	#connectFailures = 0
 
 	constructor() {
 		super()
+		window.addEventListener("focus", this.#onFocus)
+	}
+
+	#onFocus = () => {
+		if (this.#reconnectTimeout !== null) {
+			console.log("Window focused, reconnecting immediately")
+			clearTimeout(this.#reconnectTimeout)
+			this.#reconnectTimeout = null
+			this.#restart()
+		}
 	}
 
 	start() {
+		this.#stopped = false
+		this.#restart()
+	}
+
+	#restart() {
 		try {
-			console.info("Connecting to SSE")
-			this.#conn = new EventSource("_gomuks/sse")
+			const params = new URLSearchParams()
+			if (this.#lastReceivedEvt && this.#resumeRunID) {
+				params.set("run_id", this.#resumeRunID)
+				params.set("last_received_event", this.#lastReceivedEvt.toString())
+			}
+			const addr = `_gomuks/sse?${params}`
+			console.info("Connecting to SSE", addr)
+			this.#dispatchConnectionStatus(false, true, this.connect.current?.error ?? null, -1)
+			this.#conn = new EventSource(addr)
 			this.#conn.onmessage = this.#onMessage
 			this.#conn.onopen = this.#onOpen
 			this.#conn.onerror = this.#onError
@@ -48,6 +74,11 @@ export default class SSEClient extends RPCClient {
 			clearInterval(this.#pingInterval)
 			this.#pingInterval = null
 		}
+		if (this.#reconnectTimeout !== null) {
+			clearTimeout(this.#reconnectTimeout)
+			this.#reconnectTimeout = null
+		}
+		this.#stopped = true
 		this.#conn?.close()
 	}
 
@@ -70,14 +101,6 @@ export default class SSEClient extends RPCClient {
 		this.event.emit(evt)
 	}
 
-	#dispatchConnectionStatus(connected: boolean, reconnecting: boolean, error: string | null) {
-		this.connect.emit({
-			connected,
-			reconnecting,
-			error,
-		})
-	}
-
 	#onOpen = () => {
 		console.info("SSE opened")
 		this.#dispatchConnectionStatus(true, false, null)
@@ -85,19 +108,56 @@ export default class SSEClient extends RPCClient {
 			clearInterval(this.#pingInterval)
 		}
 		this.#pingInterval = setInterval(this.#pingLoop, PING_INTERVAL)
+		this.#connectFailures = 0
 	}
 
 	#onError = (ev: Event) => {
 		console.error("SSE error:", ev)
+		this.#conn?.close()
 		if (this.#pingInterval !== null) {
 			clearInterval(this.#pingInterval)
 			this.#pingInterval = null
 		}
-		this.#dispatchConnectionStatus(false, true, "SSE disconnected")
+
+		this.#connectFailures++
+		const willReconnect = !this.#stopped && !this.#reconnectTimeout
+		const backoff = Math.min(2 ** (this.#connectFailures - 4), 10) * 1000
+		this.#dispatchConnectionStatus(
+			false,
+			willReconnect,
+			`SSE disconnected`,
+			Date.now() + backoff,
+		)
+		if (willReconnect) {
+			console.log("Attempting to reconnect in", backoff, "ms")
+			this.#reconnectTimeout = setTimeout(() => {
+				console.log("Reconnecting now")
+				this.#reconnectTimeout = null
+				this.#restart()
+			}, backoff)
+		} else {
+			console.log(`Not reconnecting (stopped=${this.#stopped}, reconnectTimeout=${this.#reconnectTimeout})`)
+		}
+	}
+
+	#dispatchConnectionStatus(connected: boolean, reconnecting: boolean, error: string | null, nextAttempt?: number) {
+		this.connect.emit({
+			connected,
+			reconnecting,
+			error,
+			nextAttempt: nextAttempt ?
+				nextAttempt === -1
+					? "currently trying to connect"
+					: `next attempt at ${new Date(nextAttempt).toLocaleTimeString()}`
+				: undefined,
+		})
 	}
 
 	#pingLoop = () => {
-		if (!this.#resumeRunID || !this.#listenerID || !this.#lastReceivedEvt) {
+		if (
+			!this.#resumeRunID || !this.#listenerID || !this.#lastReceivedEvt
+			|| this.#lastReceivedEvt === this.#lastAckedEvt
+		) {
 			return
 		}
 		const evtID = this.#lastReceivedEvt
@@ -111,9 +171,7 @@ export default class SSEClient extends RPCClient {
 			signal: AbortSignal.timeout(PING_INTERVAL/2),
 		}).then(() => {
 			console.log("Successfully sent ping for", evtID)
-			if (this.#lastReceivedEvt === evtID) {
-				this.#lastReceivedEvt = undefined
-			}
+			this.#lastAckedEvt = evtID
 		}, err => {
 			console.error("Failed to send ping:", err)
 		})
