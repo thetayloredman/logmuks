@@ -15,7 +15,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --include=dev
-        working-directory: ./desktop
 
       - name: Install desktop dependencies
         run: cd ../desktop && npm ci --include=dev
