@@ -84,6 +84,7 @@ export default class WSClient extends RPCClient {
 			}
 			const addr = `${this.addr}?${params.toString()}`
 			console.info("Connecting to websocket", addr)
+			this.#dispatchConnectionStatus(false, true, this.connect.current?.error ?? null, -1)
 			this.#conn = new WebSocket(addr)
 			this.#conn.binaryType = "arraybuffer"
 			this.#conn.onmessage = this.#onMessage
@@ -202,7 +203,11 @@ export default class WSClient extends RPCClient {
 			connected,
 			reconnecting,
 			error,
-			nextAttempt: nextAttempt ? new Date(nextAttempt).toLocaleTimeString() : undefined,
+			nextAttempt: nextAttempt ?
+				nextAttempt === -1
+					? "currently trying to connect"
+					: `next attempt at ${new Date(nextAttempt).toLocaleTimeString()}`
+				: undefined,
 		})
 	}
 

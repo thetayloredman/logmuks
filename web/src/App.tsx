@@ -66,7 +66,7 @@ function App() {
 			{connState.reconnecting && <div>
 				<ScaleLoader width="2rem" height="2rem" color="var(--primary-color)"/>
 				Reconnecting to backend...
-				{connState.nextAttempt ? <div><small>(next attempt at {connState.nextAttempt})</small></div> : null}
+				{connState.nextAttempt ? <div><small>({connState.nextAttempt})</small></div> : null}
 			</div>}
 		</div>
 	</div> : null
