@@ -490,7 +490,7 @@ const MainScreen = () => {
 					rightPanel={rightPanel}
 					rightPanelResizeHandle={resizeHandle2}
 				/>
-				: <RoomPreview {...renderedRoom} />
+				: <RoomPreview key={renderedRoom.roomID} {...renderedRoom} />
 			: rightPanel && <>
 				<div className="room-view placeholder"/>
 				{resizeHandle2}
