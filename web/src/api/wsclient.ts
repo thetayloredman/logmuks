@@ -71,8 +71,23 @@ export default class WSClient extends RPCClient {
 			console.log("Window focused, reconnecting immediately")
 			clearTimeout(this.#reconnectTimeout)
 			this.#reconnectTimeout = null
-			this.start()
+			this.checkAuthAndStart()
 		}
+	}
+
+	checkAuthAndStart() {
+		this.#dispatchConnectionStatus(false, true, this.connect.current?.error ?? null, -1)
+		this.doAuth().then(
+			() => this.start(),
+			err => {
+				const errStr = err instanceof Error ? err.message : String(err)
+				if (errStr.includes("Authentication failed")) {
+					this.#dispatchConnectionStatus(false, false, errStr)
+				} else {
+					this.#doReconnect(errStr)
+				}
+			},
+		)
 	}
 
 	start() {
@@ -99,7 +114,6 @@ export default class WSClient extends RPCClient {
 			}
 			const addr = `${this.addr}?${params.toString()}`
 			console.info("Connecting to websocket", addr)
-			this.#dispatchConnectionStatus(false, true, this.connect.current?.error ?? null, -1)
 			this.#conn = new WebSocket(addr)
 			this.#conn.binaryType = "arraybuffer"
 			this.#conn.onmessage = this.#onMessage
@@ -251,28 +265,36 @@ export default class WSClient extends RPCClient {
 	#onClose = (ev: CloseEvent) => {
 		this.#decompWriter?.close()
 		this.#decompWriter = null
-		this.#connectFailures++
 		console.warn("Websocket closed:", ev)
 		this.#clearPending()
 		if (this.#pingInterval !== null) {
 			clearInterval(this.#pingInterval)
 			this.#pingInterval = null
 		}
+		this.#running = false
+		this.#doReconnect(`Websocket closed: ${ev.code} ${ev.reason}`)
+	}
+
+	#doReconnect(errStr: string) {
+		this.#connectFailures++
 		const willReconnect = !this.#stopped && !this.#reconnectTimeout
 		const backoff = Math.min(2 ** (this.#connectFailures - 4), 10) * 1000
 		this.#dispatchConnectionStatus(
 			false,
 			willReconnect,
-			`Websocket closed: ${ev.code} ${ev.reason}`,
+			errStr,
 			Date.now() + backoff,
 		)
-		this.#running = false
 		if (willReconnect) {
 			console.log("Attempting to reconnect in", backoff, "ms")
 			this.#reconnectTimeout = setTimeout(() => {
 				console.log("Reconnecting now")
 				this.#reconnectTimeout = null
-				this.start()
+				if (this.#connectFailures === 1) {
+					this.start()
+				} else {
+					this.checkAuthAndStart()
+				}
 			}, backoff)
 		} else {
 			console.log(`Not reconnecting (stopped=${this.#stopped}, reconnectTimeout=${this.#reconnectTimeout})`)

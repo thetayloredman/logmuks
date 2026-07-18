@@ -149,28 +149,33 @@ export default abstract class RPCClient {
 		throw new Error("Media upload not supported by this RPC client")
 	}
 
-	async doAuth(signal: AbortSignal): Promise<boolean> {
-		try {
-			const resp = await fetch(`_gomuks/auth?secure=${window.isSecureContext}`, {
-				method: "POST",
-				signal,
-			})
+	async doAuth(signal?: AbortSignal): Promise<void> {
+		const resp = await fetch(`_gomuks/auth?secure=${window.isSecureContext}`, {
+			method: "POST",
+			signal,
+		})
+		if (!resp.ok) {
 			let body = ""
 			try {
 				body = (await resp.text()).trim()
 			} catch {}
-			const authFailPrefix = `Authentication failed: ${resp.status} ${resp.statusText}`
-			if (!resp.ok && !signal.aborted) {
-				this.connect.emit({
-					connected: false,
-					reconnecting: false,
-					error: [authFailPrefix, body].filter(x => !!x).join(" - "),
-				})
-				return false
+			let errMsg = `Authentication failed: ${resp.status} ${resp.statusText}`
+			if (body) {
+				errMsg += ` - ${body}`
 			}
+			throw new Error(errMsg)
+		}
+	}
+
+	async tryAuth(signal: AbortSignal): Promise<boolean> {
+		try {
+			await this.doAuth(signal)
 			return true
 		} catch (err) {
-			this.connect.emit({ connected: false, reconnecting: false, error: `Authentication failed: ${err}` })
+			if (!signal.aborted) {
+				const errStr = err instanceof Error ? err.message : String(err)
+				this.connect.emit({ connected: false, reconnecting: false, error: errStr })
+			}
 			return false
 		}
 	}

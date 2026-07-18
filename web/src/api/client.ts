@@ -85,7 +85,7 @@ export default class Client {
 	}
 
 	async #reallyStart(signal: AbortSignal) {
-		if (!await this.rpc.doAuth(signal)) {
+		if (!await this.rpc.tryAuth(signal)) {
 			return
 		}
 		if (signal.aborted) {
