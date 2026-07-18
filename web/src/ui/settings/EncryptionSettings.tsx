@@ -30,8 +30,8 @@ const MINUTE = 60 * 1000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 const WEEK = 7 * DAY
-const MONTH = 4 * WEEK
-const YEAR = MONTH * 12
+const MONTH = 30 * DAY
+const YEAR = 365 * DAY
 
 function pickUnit(x: number): Intl.RelativeTimeFormatUnit {
 	x = Math.abs(x)
@@ -98,11 +98,14 @@ const DeviceInfo = ({ dev, enc, isCurrent }: DeviceInfoProps) => {
 			<code className="device-id">{dev.device_id}</code>
 			{isCurrent ? <span className="last-seen" title={timeFormatter.format(lastSeen)}>
 				· Current device
-			</span> : <span className="last-seen" title={timeFormatter.format(lastSeen)}>
+			</span> : dev.last_seen_ts > 0 ? <span className="last-seen" title={timeFormatter.format(lastSeen)}>
 				· Last seen {deltaFormatter.format(-roundToUnit(sinceLastSeen, unit), unit)}
+			</span> : <span className="last-seen">
+				· Never seen online
 			</span>}
-			at
-			<span className="last-seen-ip">{dev.last_seen_ip}</span>
+			{dev.last_seen_ip != "" ? <>
+				<span className="last-seen-ip">at {dev.last_seen_ip}</span>
+			</> : null}
 		</div>
 	</div>
 }
