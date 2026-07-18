@@ -259,7 +259,7 @@ const MessageComposer = () => {
 				[],
 		})
 		textInput.current?.focus()
-	}, [room.roomID, roomCtx.threadRoot])
+	}, [room, roomCtx.threadRoot])
 	const canSend = Boolean(state.text || state.media || state.location)
 	const onClickSend = (evt: React.FormEvent) => {
 		evt.preventDefault()
