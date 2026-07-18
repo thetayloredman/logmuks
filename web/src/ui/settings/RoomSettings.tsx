@@ -150,6 +150,8 @@ const RoomSettings = ({ room }: RoomSettingsProps) => {
 	return <div className="room-details">
 		<div className="header">
 			<h2>Room info</h2>
+			<code className="room-id">{roomMeta?.canonical_alias ?? "no alias"}</code>
+			<br />
 			<code className="room-id">{room.roomID}</code>
 		</div>
 		<div className="general-info">
