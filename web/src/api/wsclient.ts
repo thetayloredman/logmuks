@@ -20,7 +20,7 @@ import type { RPCCommand } from "./types"
 const PING_INTERVAL = 15_000
 const RECV_TIMEOUT = 4 * PING_INTERVAL
 
-function checkUpdate(etag: string) {
+export function checkUpdate(etag: string) {
 	if (!import.meta.env.PROD) {
 		return
 	} else if (!etag) {

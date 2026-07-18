@@ -299,6 +299,13 @@ export const preferences = {
 		defaultValue: false,
 		hidden: Boolean(window.gomuksDesktop?.isEmbedded() || window.gomuksWebWasm),
 	}),
+	server_sent_events: new Preference<boolean>({
+		displayName: "Use SSE",
+		description: "Use server-sent events instead of a websocket. Refresh to apply changes.",
+		allowedContexts: globalDeviceSpecific,
+		defaultValue: false,
+		hidden: Boolean(window.gomuksWebWasm),
+	}),
 	web_push: new Preference<boolean>({
 		displayName: "Web push notifications",
 		description: "Whether to enable web push for background notifications. Refresh to apply changes.",
