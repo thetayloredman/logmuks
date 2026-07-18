@@ -53,6 +53,8 @@ import (
 func (gmx *Gomuks) CreateAPIRouter() http.Handler {
 	api := http.NewServeMux()
 	api.HandleFunc("GET /websocket", gmx.HandleWebsocket)
+	api.HandleFunc("GET /sse", gmx.HandleSSE)
+	api.HandleFunc("POST /sse/ping", gmx.HandleSSEPing)
 	api.HandleFunc("POST /auth", gmx.Authenticate)
 	api.HandleFunc("POST /upload", gmx.UploadMedia)
 	api.HandleFunc("GET /media/{server}/{media_id}", gmx.DownloadMedia)
