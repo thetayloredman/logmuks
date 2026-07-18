@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import fs from "node:fs/promises"
-import { type BackendConfig } from "./webview.ts"
 import path from "node:path"
 import { app, safeStorage } from "electron"
+import { type BackendConfig } from "./webview.ts"
 
 export interface GomuksConfig {
 	backends: BackendConfig[]
@@ -41,7 +41,7 @@ export async function loadConfig(): Promise<GomuksConfig> {
 				type: "embedded",
 				name: "backend",
 				displayname: "Default Profile",
-			}]
+			}],
 		}
 		await saveConfig(config)
 		return config
@@ -51,6 +51,7 @@ export async function loadConfig(): Promise<GomuksConfig> {
 	const parsed = JSON.parse(file)
 	let doSave = false
 	const config = {
+		//eslint-disable-next-line @typescript-eslint/no-explicit-any
 		backends: await Promise.all(parsed.backends.map(async (backend: any) => {
 			if (typeof backend.name !== "string") {
 				throw new Error("Invalid backend config: name must be a string")
@@ -64,12 +65,17 @@ export async function loadConfig(): Promise<GomuksConfig> {
 					env: backend.env,
 				} as BackendConfig
 			} else if (backend.type === "remote") {
-				if (typeof backend.address !== "string" || typeof backend.username !== "string" || (typeof backend.password !== "string" && typeof backend.password_encrypted !== "string")) {
+				if (
+					typeof backend.address !== "string"
+					|| typeof backend.username !== "string"
+					|| (typeof backend.password !== "string" && typeof backend.password_encrypted !== "string")
+				) {
 					throw new Error("Invalid backend config: remote backends must have address, username and password")
 				}
 				let password = backend.password
 				if (backend.password_encrypted) {
-					const passwd = await safeStorage.decryptStringAsync(Buffer.from(backend.password_encrypted, "base64"))
+					const passwd =
+						await safeStorage.decryptStringAsync(Buffer.from(backend.password_encrypted, "base64"))
 					if (passwd.shouldReEncrypt) {
 						doSave = true
 					}
@@ -87,7 +93,7 @@ export async function loadConfig(): Promise<GomuksConfig> {
 			} else {
 				throw new Error(`Invalid backend config: unknown type ${backend.type}`)
 			}
-		}))
+		})),
 	}
 	if (doSave) {
 		await saveConfig(config)
@@ -113,7 +119,7 @@ export async function saveConfig(config: GomuksConfig) {
 					}
 				}
 				return backend
-			}))
+			})),
 		}, null, 2),
 		{ encoding: "utf8", mode: 0o600 },
 	)

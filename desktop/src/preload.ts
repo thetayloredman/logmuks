@@ -16,7 +16,7 @@
 import { contextBridge, ipcRenderer } from "electron"
 import { TabInfo } from "./tabinfo.ts"
 
-let subscriber = (_tabs: TabInfo[]) => {}
+let subscriber: (tabs: TabInfo[]) => void = () => {}
 let cache: TabInfo[] | null  = null
 let currentTabID: string = ""
 let disableNotifications: boolean = false

@@ -13,8 +13,8 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { WebContents } from "electron"
 import path from "node:path"
+import { WebContents } from "electron"
 
 export function loadPage(webContents: WebContents, file: string) {
 	if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {

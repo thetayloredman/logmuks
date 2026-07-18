@@ -13,11 +13,13 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { app, BaseWindow, ipcMain, Menu, MenuItemConstructorOptions, nativeImage, Tray, autoUpdater, dialog } from "electron"
-import { GomuksView } from "./webview.ts"
+import path from "node:path"
+import {
+	BaseWindow, Menu, MenuItemConstructorOptions, Tray, app, autoUpdater, dialog, ipcMain, nativeImage,
+} from "electron"
 import { GomuksConfig } from "./config.ts"
 import { TabInfo } from "./tabinfo.ts"
-import path from "node:path"
+import { GomuksView } from "./webview.ts"
 
 export class GomuksWindow {
 	private window: BaseWindow | null = null
@@ -38,7 +40,7 @@ export class GomuksWindow {
 			}
 		})
 		app.on("activate", this.open)
-		app.on("second-instance", (_event, commandLine, _workingDirectory) => {
+		app.on("second-instance", (_event, commandLine) => {
 			console.log("Got second instance with", commandLine)
 			this.open()
 

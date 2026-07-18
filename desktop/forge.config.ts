@@ -1,13 +1,13 @@
-import type { ForgeConfig } from "@electron-forge/shared-types"
-import { MakerSquirrel } from "@electron-forge/maker-squirrel"
-import { MakerDMG } from "@electron-forge/maker-dmg"
-import { MakerZIP } from "@electron-forge/maker-zip"
-import { MakerDeb } from "@electron-forge/maker-deb"
-import { VitePlugin } from "@electron-forge/plugin-vite"
-import { FusesPlugin } from "@electron-forge/plugin-fuses"
-import { FuseV1Options, FuseVersion } from "@electron/fuses"
-import path from "node:path"
 import fs from "node:fs/promises"
+import path from "node:path"
+import { FuseV1Options, FuseVersion } from "@electron/fuses"
+import { MakerDeb } from "@electron-forge/maker-deb"
+import { MakerDMG } from "@electron-forge/maker-dmg"
+import { MakerSquirrel } from "@electron-forge/maker-squirrel"
+import { MakerZIP } from "@electron-forge/maker-zip"
+import { FusesPlugin } from "@electron-forge/plugin-fuses"
+import { VitePlugin } from "@electron-forge/plugin-vite"
+import type { ForgeConfig } from "@electron-forge/shared-types"
 import pkg from "./package.json"
 import type { BuildInfo } from "./src/build-info.ts"
 
@@ -86,7 +86,7 @@ const config: ForgeConfig = {
 				throw err
 			}
 		},
-		packageAfterCopy: async (_forgeConfig, buildPath, _electronVersion, platform, _arch) => {
+		packageAfterCopy: async (_forgeConfig, buildPath, _electronVersion, platform) => {
 			const binaryName = platform === "win32" ? "gomuks.exe" : "gomuks"
 			const resourcesDir = path.resolve(buildPath, "..")
 			const dest = path.join(resourcesDir, binaryName)
@@ -131,11 +131,8 @@ const config: ForgeConfig = {
 	],
 	plugins: [
 		new VitePlugin({
-			// `build` can specify multiple entry builds, which can be Main process, Preload scripts, Worker process, etc.
-			// If you are familiar with Vite configuration, it will look really familiar.
 			build: [
 				{
-					// `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
 					entry: "src/main.ts",
 					config: "vite.main.config.ts",
 					target: "main",
@@ -153,8 +150,6 @@ const config: ForgeConfig = {
 				},
 			],
 		}),
-		// Fuses are used to enable/disable various Electron functionality
-		// at package time, before code signing the application
 		new FusesPlugin({
 			version: FuseVersion.V1,
 			[FuseV1Options.RunAsNode]: false,
