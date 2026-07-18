@@ -19,6 +19,7 @@ import { RoomID } from "@/api/types"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import ClientContext from "../ClientContext.ts"
 import { ModalCloseContext, ModalContext, modals } from "../modal"
+import CopyIcon from "@/icons/copy.svg?react"
 import DoorOpenIcon from "@/icons/door-open.svg?react"
 import MarkReadIcon from "@/icons/mark-read.svg?react"
 import MarkUnreadIcon from "@/icons/mark-unread.svg?react"
@@ -111,12 +112,32 @@ export const RoomMenu = ({ room, style }: RoomMenuProps) => {
 	const onClickShare = () => {
 		openModal(modals.shareRoom(room))
 	}
+	const copyAlias = () => {
+		const alias = room.meta.current.canonical_alias
+		closeModal()
+
+		if (!alias) {
+			window.alert("No canonical alias to copy")
+			return
+		}
+
+		navigator.clipboard.writeText(alias).then(
+			() => {},
+			err => {
+				console.error("Failed to copy alias", err)
+				alert(`Failed to copy alias: ${err}`)
+			},
+		)
+		
+	}
+
 	return <div className="context-menu room-list-menu" style={style}>
 		<MarkReadButton room={room} />
 		<MuteButton roomID={room.roomID}/>
 		<button onClick={onClickShare}><ShareIcon /> Share</button>
 		<button onClick={openSettings}><SettingsIcon /> Settings</button>
 		<button onClick={leaveRoom}><DoorOpenIcon /> Leave room</button>
+		<button onClick={copyAlias}><CopyIcon />Copy alias</button>
 	</div>
 }
 
