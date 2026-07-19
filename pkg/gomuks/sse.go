@@ -32,10 +32,8 @@ import (
 
 func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	log := zerolog.Ctx(r.Context())
-	sw := newSSEWriter(w)
+	sw := newSSEWriter(w, r)
 	if sw == nil {
-		log.Error().Type("writer_type", w).Msg("ResponseWriter does not support flushing")
-		mautrix.MUnknown.WithMessage("ResponseWriter does not support flushing").Write(w)
 		return
 	}
 
@@ -48,6 +46,7 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		Int64("resume_from", resumeFrom).
 		Int64("resume_run_id", resumeRunID).
 		Int64("current_run_id", runID).
+		Bool("compressed", sw.c != nil).
 		Msg("Accepting new SSE connection")
 	ctx, cancel := context.WithCancelCause(r.Context())
 	defer cancel(fmt.Errorf("defer cancel"))

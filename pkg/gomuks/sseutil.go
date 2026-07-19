@@ -17,32 +17,63 @@
 package gomuks
 
 import (
+	"cmp"
 	"encoding/json"
+	"io"
 	"iter"
 	"net/http"
 	"slices"
+	"strings"
+
+	"github.com/klauspost/compress/flate"
+	"github.com/klauspost/compress/zstd"
+	"github.com/rs/zerolog"
+	"maunium.net/go/mautrix"
 )
 
 type sseWriter struct {
 	rc *http.ResponseController
-	w  http.ResponseWriter
+	w  io.Writer
 	j  *json.Encoder
+	c  compressor
 }
 
-func newSSEWriter(w http.ResponseWriter) *sseWriter {
+type compressor interface {
+	io.Writer
+	Flush() error
+}
+
+func newSSEWriter(w http.ResponseWriter, r *http.Request) *sseWriter {
 	_, ok := w.(http.Flusher)
 	if !ok {
+		zerolog.Ctx(r.Context()).Error().Type("writer_type", w).Msg("ResponseWriter does not support flushing")
+		mautrix.MUnknown.WithMessage("ResponseWriter does not support flushing").Write(w)
 		return nil
 	}
 	rc := http.NewResponseController(w)
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
+	var c compressor
+	var err error
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "zstd") {
+		w.Header().Set("Content-Encoding", "zstd")
+		c, err = zstd.NewWriter(w, zstd.WithEncoderConcurrency(1), zstd.WithEncoderLevel(zstd.SpeedDefault))
+	} else if strings.Contains(r.Header.Get("Accept-Encoding"), "deflate") {
+		w.Header().Set("Content-Encoding", "deflate")
+		c, err = flate.NewWriter(w, flate.DefaultCompression)
+	}
+	if err != nil {
+		zerolog.Ctx(r.Context()).Err(err).Msg("Failed to create compression writer")
+		return nil
+	}
+	rawWriter := cmp.Or[io.Writer](c, w)
 	w.WriteHeader(http.StatusOK)
 	return &sseWriter{
 		rc: rc,
-		w:  w,
-		j:  json.NewEncoder(w),
+		w:  rawWriter,
+		j:  json.NewEncoder(rawWriter),
+		c:  c,
 	}
 }
 
@@ -62,12 +93,22 @@ func (w *sseWriter) write(cmd *BufferedEvent) (err error) {
 	return
 }
 
+func (w *sseWriter) flush() error {
+	if w.c != nil {
+		err := w.c.Flush()
+		if err != nil {
+			return err
+		}
+	}
+	return w.rc.Flush()
+}
+
 func (w *sseWriter) ping() error {
 	_, err := w.w.Write(pingBytes)
 	if err != nil {
 		return err
 	}
-	return w.rc.Flush()
+	return w.flush()
 }
 
 func (w *sseWriter) writeAndFlush(cmd *BufferedEvent, extra iter.Seq[*BufferedEvent]) (err error) {
@@ -83,7 +124,7 @@ func (w *sseWriter) writeAndFlush(cmd *BufferedEvent, extra iter.Seq[*BufferedEv
 			return
 		}
 	}
-	return w.rc.Flush()
+	return w.flush()
 }
 
 func (w *sseWriter) writeSeq(cmds iter.Seq[*BufferedEvent]) (err error) {
