@@ -39,7 +39,7 @@ type sseWriter struct {
 }
 
 type compressor interface {
-	io.Writer
+	io.WriteCloser
 	Flush() error
 }
 

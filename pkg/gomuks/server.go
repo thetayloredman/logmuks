@@ -36,6 +36,8 @@ import (
 	"time"
 
 	"github.com/alecthomas/chroma/v2/styles"
+	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zstd"
 	"github.com/rs/zerolog/hlog"
 	"go.mau.fi/util/exerrors"
 	"go.mau.fi/util/exhttp"
@@ -395,6 +397,23 @@ func checkClientTS(w http.ResponseWriter, clientTSStr string) bool {
 	return false
 }
 
+func compressResp(accept string, data []byte) (out []byte, enc string) {
+	if strings.Contains(accept, "zstd") {
+		return zstd.EncodeTo(nil, data), "zstd"
+	} else if strings.Contains(accept, "gzip") {
+		var buf bytes.Buffer
+		w := gzip.NewWriter(&buf)
+		_, err := w.Write(data)
+		if err != nil {
+			_ = w.Close()
+		} else if err = w.Close(); err != nil {
+		} else {
+			return buf.Bytes(), "gzip"
+		}
+	}
+	return data, ""
+}
+
 func (gmx *Gomuks) ExecCommand(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	txnID := q.Get("txn_id")
@@ -437,8 +456,13 @@ func (gmx *Gomuks) ExecCommand(w http.ResponseWriter, r *http.Request) {
 	if respErr != nil {
 		respErr.Write(w)
 	} else {
+		compressedData, enc := compressResp(r.Header.Get("Accept-Encoding"), respData)
+		if enc != "" {
+			w.Header().Set("Content-Encoding", enc)
+		}
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Length", strconv.Itoa(len(compressedData)))
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(respData)
+		_, _ = w.Write(compressedData)
 	}
 }
