@@ -108,7 +108,7 @@ app.whenReady().then(async () => {
 				baseUrl:
 					`https://update.gomuks.app/desktop-${buildInfo.updateChannel}/${process.platform}/${process.arch}`,
 			},
-			updateInterval: "1 hour",
+			updateInterval: "12 hours",
 			notifyUser: true,
 		})
 	}
