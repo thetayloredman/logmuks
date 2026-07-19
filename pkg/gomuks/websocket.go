@@ -18,7 +18,6 @@ package gomuks
 
 import (
 	"bytes"
-	"compress/flate"
 	"context"
 	"encoding/json"
 	"errors"
@@ -31,6 +30,7 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/klauspost/compress/flate"
 	"github.com/rs/zerolog"
 
 	"go.mau.fi/gomuks/pkg/hicli"
