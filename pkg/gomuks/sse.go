@@ -37,16 +37,7 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resumeFrom, _ := strconv.ParseInt(r.URL.Query().Get("last_received_event"), 10, 64)
-	lastServerTS, _ := strconv.ParseInt(r.URL.Query().Get("last_server_ts"), 10, 64)
-	prevListenerID, _ := strconv.ParseUint(r.URL.Query().Get("prev_listener_id"), 10, 64)
-	resumeRunID, _ := strconv.ParseInt(r.URL.Query().Get("run_id"), 10, 64)
-	if resumeRunID != runID {
-		resumeFrom = 0
-	}
-	if prevListenerID != 0 && resumeRunID == runID {
-		gmx.EventBuffer.ClearListenerLastAckedID(prevListenerID)
-	}
+	resumeFrom, lastServerTS, resumeRunID, prevListenerID := gmx.parseSocketParams(r.URL.Query())
 	log.Info().
 		Int64("resume_from", resumeFrom).
 		Int64("resume_run_id", resumeRunID).

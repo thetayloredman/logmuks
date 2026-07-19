@@ -23,6 +23,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"runtime/debug"
 	"strconv"
 	"sync"
@@ -44,6 +45,20 @@ const (
 
 var emptyObject = json.RawMessage("{}")
 var runID = time.Now().UnixNano()
+
+func (gmx *Gomuks) parseSocketParams(q url.Values) (resumeFrom, lastServerTS, resumeRunID int64, prevListenerID uint64) {
+	resumeFrom, _ = strconv.ParseInt(q.Get("last_received_event"), 10, 64)
+	lastServerTS, _ = strconv.ParseInt(q.Get("last_server_ts"), 10, 64)
+	prevListenerID, _ = strconv.ParseUint(q.Get("prev_listener_id"), 10, 64)
+	resumeRunID, _ = strconv.ParseInt(q.Get("run_id"), 10, 64)
+	if resumeRunID != runID {
+		resumeFrom = 0
+	}
+	if prevListenerID != 0 && resumeRunID == runID {
+		gmx.EventBuffer.ClearListenerLastAckedID(prevListenerID)
+	}
+	return
+}
 
 func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	var conn *websocket.Conn
@@ -72,11 +87,9 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		log.Warn().Err(acceptErr).Msg("Failed to accept websocket connection")
 		return
 	}
-	resumeFrom, _ := strconv.ParseInt(r.URL.Query().Get("last_received_event"), 10, 64)
-	lastServerTS, _ := strconv.ParseInt(r.URL.Query().Get("last_server_ts"), 10, 64)
-	prevListenerID, _ := strconv.ParseUint(r.URL.Query().Get("prev_listener_id"), 10, 64)
-	resumeRunID, _ := strconv.ParseInt(r.URL.Query().Get("run_id"), 10, 64)
-	compress, _ := strconv.ParseInt(r.URL.Query().Get("compress"), 10, 64)
+	q := r.URL.Query()
+	resumeFrom, lastServerTS, resumeRunID, prevListenerID := gmx.parseSocketParams(q)
+	compress, _ := strconv.ParseInt(q.Get("compress"), 10, 64)
 	log.Info().
 		Int64("resume_from", resumeFrom).
 		Int64("resume_run_id", resumeRunID).
