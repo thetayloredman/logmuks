@@ -398,6 +398,9 @@ func checkClientTS(w http.ResponseWriter, clientTSStr string) bool {
 }
 
 func compressResp(accept string, data []byte) (out []byte, enc string) {
+	if len(data) < 1024 {
+		return data, ""
+	}
 	if strings.Contains(accept, "zstd") {
 		return zstd.EncodeTo(nil, data), "zstd"
 	} else if strings.Contains(accept, "gzip") {
