@@ -38,13 +38,20 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resumeFrom, _ := strconv.ParseInt(r.URL.Query().Get("last_received_event"), 10, 64)
+	lastServerTS, _ := strconv.ParseInt(r.URL.Query().Get("last_server_ts"), 10, 64)
+	prevListenerID, _ := strconv.ParseUint(r.URL.Query().Get("prev_listener_id"), 10, 64)
 	resumeRunID, _ := strconv.ParseInt(r.URL.Query().Get("run_id"), 10, 64)
 	if resumeRunID != runID {
 		resumeFrom = 0
 	}
+	if prevListenerID != 0 && resumeRunID == runID {
+		gmx.EventBuffer.ClearListenerLastAckedID(prevListenerID)
+	}
 	log.Info().
 		Int64("resume_from", resumeFrom).
 		Int64("resume_run_id", resumeRunID).
+		Int64("resume_server_ts", lastServerTS).
+		Uint64("prev_listener_id", prevListenerID).
 		Int64("current_run_id", runID).
 		Bool("compressed", sw.c != nil).
 		Msg("Accepting new SSE connection")
@@ -97,7 +104,7 @@ func (gmx *Gomuks) HandleSSE(w http.ResponseWriter, r *http.Request) {
 		resumeData = nil
 		inited = true
 	} else if gmx.Client.IsLoggedIn() {
-		for payload := range gmx.Client.GetInitialSync(ctx, 100) {
+		for payload := range gmx.Client.GetInitialSync(ctx, 100, lastServerTS) {
 			err := sw.writeAndFlush(jsoncmd.SpecSyncComplete.Format(payload).AsAny(), nil)
 			if err != nil {
 				log.Err(err).Msg("Failed to send initial rooms to client")

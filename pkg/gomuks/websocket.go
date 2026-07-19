@@ -73,11 +73,15 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resumeFrom, _ := strconv.ParseInt(r.URL.Query().Get("last_received_event"), 10, 64)
+	lastServerTS, _ := strconv.ParseInt(r.URL.Query().Get("last_server_ts"), 10, 64)
+	prevListenerID, _ := strconv.ParseUint(r.URL.Query().Get("prev_listener_id"), 10, 64)
 	resumeRunID, _ := strconv.ParseInt(r.URL.Query().Get("run_id"), 10, 64)
 	compress, _ := strconv.ParseInt(r.URL.Query().Get("compress"), 10, 64)
 	log.Info().
 		Int64("resume_from", resumeFrom).
 		Int64("resume_run_id", resumeRunID).
+		Int64("resume_server_ts", lastServerTS).
+		Uint64("prev_listener_id", prevListenerID).
 		Int64("current_run_id", runID).
 		Int64("compress", compress).
 		Msg("Accepted new websocket connection")
@@ -120,6 +124,9 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 	if resumeRunID != runID {
 		resumeFrom = 0
+	}
+	if prevListenerID != 0 && resumeRunID == runID {
+		gmx.EventBuffer.ClearListenerLastAckedID(prevListenerID)
 	}
 	var resumeData []*BufferedEvent
 	listenerID, resumeData = gmx.EventBuffer.Subscribe(resumeFrom, closeManually, func(evt *BufferedEvent) {
@@ -247,9 +254,10 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	initErr := writeCmd(ctx, conn, fp, jsoncmd.SpecRunID.Format(&jsoncmd.RunData{
-		RunID:    strconv.FormatInt(runID, 10),
-		ETag:     gmx.frontendETag,
-		VAPIDKey: gmx.Config.Push.VAPIDPublicKey,
+		RunID:      strconv.FormatInt(runID, 10),
+		ETag:       gmx.frontendETag,
+		VAPIDKey:   gmx.Config.Push.VAPIDPublicKey,
+		ListenerID: listenerID,
 	}))
 	if initErr != nil {
 		log.Err(initErr).Msg("Failed to write init client state message")
@@ -267,7 +275,7 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	}
 	go sendImageAuthToken()
 	if gmx.Client.IsLoggedIn() && !didResume {
-		go gmx.sendInitialData(ctx, fp, conn)
+		go gmx.sendInitialData(ctx, fp, conn, lastServerTS)
 	}
 	log.Debug().Bool("did_resume", didResume).Msg("Connection initialization complete")
 	var closeErr websocket.CloseError
@@ -311,11 +319,11 @@ func (gmx *Gomuks) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 
 var newlineBytes = []byte("\n")
 
-func (gmx *Gomuks) sendInitialData(ctx context.Context, fp *flateProxy, conn *websocket.Conn) {
+func (gmx *Gomuks) sendInitialData(ctx context.Context, fp *flateProxy, conn *websocket.Conn, lastServerTS int64) {
 	log := zerolog.Ctx(ctx)
 	var roomCount int
 	var totalSize int
-	for payload := range gmx.Client.GetInitialSync(ctx, 100) {
+	for payload := range gmx.Client.GetInitialSync(ctx, 100, lastServerTS) {
 		roomCount += len(payload.Rooms)
 		n, err := writeCmdWithExtra(ctx, conn, fp, jsoncmd.SpecSyncComplete.Format(payload), nil)
 		if err != nil {

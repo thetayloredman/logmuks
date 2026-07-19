@@ -149,7 +149,8 @@ func GomuksStart(handle C.GomuksHandle, callback C.EventCallback) C.int {
 	if gmx.Client.IsLoggedIn() {
 		go func() {
 			var roomCount int
-			for payload := range gmx.Client.GetInitialSync(gmx.ctx, 100) {
+			// TODO allow catchup sync?
+			for payload := range gmx.Client.GetInitialSync(gmx.ctx, 100, 0) {
 				roomCount += len(payload.Rooms)
 				sendBufferedEvent(callback, jsoncmd.SpecSyncComplete.Format(payload))
 			}

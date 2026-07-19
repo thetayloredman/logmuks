@@ -129,7 +129,8 @@ func main() {
 	postMessage(jsoncmd.EventSyncStatus, 0, gmx.Client.SyncStatus.Load())
 	if gmx.Client.IsLoggedIn() {
 		ctx := gmx.Log.WithContext(context.Background())
-		for payload := range gmx.Client.GetInitialSync(ctx, 100) {
+		// TODO allow catchup sync?
+		for payload := range gmx.Client.GetInitialSync(ctx, 100, 0) {
 			postMessage(jsoncmd.EventSyncComplete, 0, payload)
 		}
 		postMessage(jsoncmd.EventInitComplete, 0, gmx.Client.SyncStatus.Load())
