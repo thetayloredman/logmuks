@@ -56,6 +56,9 @@ export default class SSEClient extends RPCClient {
 			if (this.#lastReceivedEvt && this.#resumeRunID) {
 				params.set("run_id", this.#resumeRunID)
 				params.set("last_received_event", this.#lastReceivedEvt.toString())
+				if (this.#listenerID) {
+					params.set("prev_listener_id", this.#listenerID.toString())
+				}
 			}
 			const addr = `_gomuks/sse?${params}`
 			console.info("Connecting to SSE", addr)

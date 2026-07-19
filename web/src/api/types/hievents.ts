@@ -157,7 +157,7 @@ export interface RunData {
 	run_id: string
 	etag: string
 	vapid_key: string
-	listener_id?: number
+	listener_id: number
 }
 
 export interface RunIDEvent extends BaseRPCCommand<RunData> {

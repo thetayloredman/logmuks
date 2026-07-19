@@ -54,6 +54,7 @@ export default class WSClient extends RPCClient {
 	#lastMessage: number = 0
 	#pingInterval: ReturnType<typeof setInterval> | null = null
 	#lastReceivedEvt: number = 0
+	#listenerID?: number
 	#resumeRunID: string = ""
 	#running = false
 	#stopped = false
@@ -108,6 +109,9 @@ export default class WSClient extends RPCClient {
 			if (this.#lastReceivedEvt && this.#resumeRunID) {
 				params.set("run_id", this.#resumeRunID)
 				params.set("last_received_event", this.#lastReceivedEvt.toString())
+				if (this.#listenerID) {
+					params.set("prev_listener_id", this.#listenerID.toString())
+				}
 			}
 			if (this.compress) {
 				params.set("compress", "1")
@@ -225,6 +229,7 @@ export default class WSClient extends RPCClient {
 		} else if (parsed.command === "run_id") {
 			console.log("Received run ID", parsed.data)
 			this.#resumeRunID = parsed.data.run_id
+			this.#listenerID = parsed.data.listener_id
 			window.vapidPublicKey = parsed.data.vapid_key
 			checkUpdate(parsed.data.etag)
 		}
