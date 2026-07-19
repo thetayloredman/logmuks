@@ -24,6 +24,7 @@ import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subs
 import { getDisplayname } from "@/util/validation.ts"
 import {
 	ContentURI,
+	DBRoom,
 	EventRowID,
 	EventsDecryptedData,
 	ImagePackRooms,
@@ -215,8 +216,8 @@ export class StateStore {
 		return fn ? this.roomList.current.filter(fn) : this.roomList.current
 	}
 
-	#showTypeInRoomList(entry: SyncRoom): boolean {
-		const cc = entry.meta.creation_content
+	#showTypeInRoomList(meta: DBRoom): boolean {
+		const cc = meta.creation_content
 		switch (cc?.type ?? "") {
 		default:
 			// The room is not a normal room
@@ -229,12 +230,12 @@ export class StateStore {
 		}
 	}
 
-	#isTombstoned(entry: SyncRoom): boolean {
-		const replacementRoom = entry.meta.tombstone?.replacement_room
+	#isTombstoned(meta: DBRoom): boolean {
+		const replacementRoom = meta.tombstone?.replacement_room
 		if (
 			replacementRoom
 			&& this.rooms.get(replacementRoom)?.meta.current.creation_content?.predecessor?.room_id
-			=== entry.meta.room_id
+			=== meta.room_id
 		) {
 			// The room is tombstoned and the replacement room is valid.
 			return true
@@ -244,6 +245,9 @@ export class StateStore {
 	}
 
 	#roomListEntryChanged(entry: SyncRoom, oldEntry: RoomStateStore): boolean {
+		if (!entry.meta) {
+			return false
+		}
 		return entry.meta.sorting_timestamp !== oldEntry.meta.current.sorting_timestamp ||
 			entry.meta.unread_messages !== oldEntry.meta.current.unread_messages ||
 			entry.meta.unread_notifications !== oldEntry.meta.current.unread_notifications ||
@@ -253,16 +257,19 @@ export class StateStore {
 			entry.meta.name !== oldEntry.meta.current.name ||
 			entry.meta.avatar !== oldEntry.meta.current.avatar ||
 			entry.meta.dm_user_id !== oldEntry.meta.current.dm_user_id ||
-			(entry.events ?? []).findIndex(evt => evt.rowid === entry.meta.preview_event_rowid) !== -1 ||
+			(entry.events ?? []).findIndex(evt => evt.rowid === entry.meta!.preview_event_rowid) !== -1 ||
 			(!!entry.account_data && "m.tag" in entry.account_data)
 	}
 
 	#makeRoomListEntry(entry: SyncRoom, room?: RoomStateStore): RoomListEntry | null {
+		if (!entry.meta) {
+			return null
+		}
 		if (!room) {
 			room = this.rooms.get(entry.meta.room_id)
 		}
-		const isTombstoned = this.#isTombstoned(entry)
-		const showInRoomList = this.#showTypeInRoomList(entry)
+		const isTombstoned = this.#isTombstoned(entry.meta)
+		const showInRoomList = this.#showTypeInRoomList(entry.meta)
 		const hidden = isTombstoned || !showInRoomList
 		if (room) {
 			room.tombstoned = isTombstoned
@@ -345,6 +352,10 @@ export class StateStore {
 			let isNewRoom = false
 			let room = this.rooms.get(roomID)
 			if (!room) {
+				if (!data.meta) {
+					console.warn("Received room sync data without meta for unknown room", roomID)
+					continue
+				}
 				room = new RoomStateStore(data.meta, this)
 				this.rooms.set(roomID, room)
 				if (hasInvites) {
@@ -366,7 +377,7 @@ export class StateStore {
 			}
 			if (!resyncRoomList) {
 				// When we join a valid replacement room, hide the tombstoned room.
-				const predecessorID = data.meta.creation_content?.predecessor?.room_id
+				const predecessorID = data.meta?.creation_content?.predecessor?.room_id
 				if (isNewRoom && typeof predecessorID === "string") {
 					const predecessorRoom = this.rooms.get(predecessorID)
 					if (predecessorRoom?.meta.current.tombstone?.replacement_room === roomID) {

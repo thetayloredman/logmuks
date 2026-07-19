@@ -553,14 +553,16 @@ export class RoomStateStore {
 	}
 
 	applySync(sync: SyncRoom) {
-		if (sync.meta.dm_user_id === "") {
+		if (sync.meta?.dm_user_id === "") {
 			sync.meta.dm_user_id = undefined
 		}
-		if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
-			this.meta.current = sync.meta
-		} else {
-			this.searchString = this.#makeSearchString(sync.meta)
-			this.meta.emit(sync.meta)
+		if (sync.meta) {
+			if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
+				this.meta.current = sync.meta
+			} else {
+				this.searchString = this.#makeSearchString(sync.meta)
+				this.meta.emit(sync.meta)
+			}
 		}
 		for (const ad of Object.values(sync.account_data ?? {})) {
 			if (ad.type === "fi.mau.gomuks.preferences") {
@@ -600,7 +602,7 @@ export class RoomStateStore {
 		} else if (sync.timeline) {
 			this.timeline.push(...sync.timeline)
 		}
-		if (sync.meta.unread_notifications === 0 && sync.meta.unread_highlights === 0) {
+		if (sync.meta && sync.meta.unread_notifications === 0 && sync.meta.unread_highlights === 0) {
 			for (const notif of this.openNotifications.values()) {
 				notif.close()
 			}
