@@ -94,7 +94,7 @@ export default class Client {
 			return
 		}
 		console.log("Successfully authenticated, connecting to websocket")
-		if (this.rpc instanceof SSEClient) {
+		if (this.store.preferences.low_bandwidth && this.rpc instanceof SSEClient) {
 			await this.store.loadCache()
 		}
 		this.rpc.start()

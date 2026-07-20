@@ -24,6 +24,8 @@ import {
 	SyncRoom,
 } from "@/api/types"
 
+const CACHE_DB = "gomuks-cache"
+
 const KEY_TOP_LEVEL_SPACES = "top_level_spaces"
 const KEY_SERVER_TIMESTAMP = "server_timestamp"
 
@@ -60,6 +62,7 @@ export default class StateCache {
 		console.info("Loaded cache data in", performance.now() - loadStart, "ms")
 		this.db = db
 		this.flushInterval = setInterval(this.tryFlush, 60_000)
+		db.onversionchange = () => this.close()
 		return data
 	}
 
@@ -72,12 +75,14 @@ export default class StateCache {
 			this.db.close()
 			this.db = undefined
 		}
+		console.log("Closed cache db")
 	}
 
 	private initDB = () => new Promise<IDBDatabase>((resolve, reject) => {
-		const req = window.indexedDB.open("gomuks-cache", 1)
+		const req = window.indexedDB.open(CACHE_DB, 1)
 		req.onsuccess = () => resolve(req.result)
-		req.onerror = () => reject(req.error)
+		req.onerror = () => reject(req.error ?? new Error("Open failed"))
+		req.onblocked = () => console.warn("Cache db open blocked")
 		req.onupgradeneeded = () => {
 			console.info("Upgrading cache db")
 			req.result.createObjectStore(INVITED_ROOM_STORE, { keyPath: "room_id" })
@@ -87,6 +92,15 @@ export default class StateCache {
 			req.result.createObjectStore(KV_STORE, { keyPath: "key" })
 		}
 	})
+
+	static delete() {
+		return new Promise<void>((resolve, reject) => {
+			const res = window.indexedDB.deleteDatabase(CACHE_DB)
+			res.onsuccess = () => resolve()
+			res.onerror = () => reject(res.error ?? new Error("Delete failed"))
+			res.onblocked = () => console.warn("Cache db delete blocked")
+		})
+	}
 
 	private loadData = (db: IDBDatabase) => new Promise<SyncCompleteData | null>((resolve, reject) => {
 		const txn = db.transaction(allStores, "readonly")
@@ -162,6 +176,9 @@ export default class StateCache {
 			return
 		} else if (this.flushing) {
 			reject(new Error("Already flushing"))
+			return
+		} else if (!this.queue.size) {
+			resolve("Nothing to flush")
 			return
 		}
 		this.flushing = true

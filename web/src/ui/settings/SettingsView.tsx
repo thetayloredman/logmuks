@@ -82,6 +82,12 @@ const SettingsView = ({ room }: SettingsViewProps) => {
 			if (key === "web_push") {
 				client.registerWebPush()
 			}
+			if (key === "low_bandwidth" && !value) {
+				client.store.deleteCache().then(
+					() => console.log("Cleared cache after disabling low bandwidth mode"),
+					err => console.error("Failed to clear cache after disabling low bandwidth mode:", err),
+				)
+			}
 		} else if (context === PreferenceContext.RoomAccount && room) {
 			client.rpc.setAccountData("fi.mau.gomuks.preferences", {
 				...room.serverPreferenceCache,

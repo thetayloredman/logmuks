@@ -13,7 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-import { use } from "react"
+import { use, useState } from "react"
 import ClientContext from "../ClientContext.ts"
 
 const MiscButtons = () => {
@@ -36,6 +36,17 @@ const MiscButtons = () => {
 			err => window.alert(`Failed to request OpenID token: ${err}`),
 		)
 	}
+	const [clearing, setClearing] = useState(false)
+	const clearCache = () => {
+		setClearing(true)
+		client.store.deleteCache().then(
+			() => {
+				console.log("Cleared state cache, reloading")
+				window.location.reload()
+			},
+			err => window.alert(`Failed to clear cache: ${err}`),
+		).finally(() => setClearing(false))
+	}
 	return <div className="misc-buttons">
 		<button onClick={onClickOpenCSSApp}>Sign into css.gomuks.app</button>
 		{window.Notification && !window.gomuksAndroid && <button onClick={client.requestNotificationPermission}>
@@ -44,6 +55,9 @@ const MiscButtons = () => {
 		{!window.gomuksAndroid &&
 			<button onClick={client.registerURIHandler}>Register <code>matrix:</code> URI handler</button>
 		}
+		{client.store.anyStateCache ? <button onClick={clearCache} disabled={clearing}>
+			{clearing ? "Clearing cache..." : "Clear cache and reload"}
+		</button> : null}
 		<div className="spacer" />
 		<button className="logout" onClick={onClickLogout}>Logout</button>
 	</div>

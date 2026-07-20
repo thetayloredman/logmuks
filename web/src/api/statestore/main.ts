@@ -175,12 +175,19 @@ export class StateStore {
 		return true
 	}
 
+	get anyStateCache(): StateCache | undefined {
+		return this.stateCache ?? this.tmpStateCache
+	}
+
 	closeCache() {
-		if (this.tmpStateCache) {
-			this.tmpStateCache.close()
-		} else if (this.stateCache) {
-			this.stateCache.close()
-		}
+		this.anyStateCache?.close()
+		this.stateCache = undefined
+		this.tmpStateCache = undefined
+	}
+
+	deleteCache() {
+		this.closeCache()
+		return StateCache.delete()
 	}
 
 	loadCache() {
