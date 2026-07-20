@@ -373,9 +373,11 @@ export class StateStore {
 			console.info("Clearing state store as sync told to reset and there are rooms in the store")
 			prevActiveRoom = this.activeRoomID
 			this.clear()
-		}
-		if (sync.catchup) {
-			console.info("Received catchup sync")
+		} else if (sync.catchup) {
+			console.info("Received catchup sync, doing garbage collection on all rooms")
+			for (const room of this.rooms.values()) {
+				room.doGarbageCollection()
+			}
 		}
 		const resyncRoomList = this.roomList.current.length === 0
 		const changedRoomListEntries = new Map<RoomID, RoomListEntry | null>()
