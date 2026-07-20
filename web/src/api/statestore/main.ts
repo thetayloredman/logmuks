@@ -155,6 +155,7 @@ export class StateStore {
 	readonly widgetListeners: Set<WidgetListener> = new Set()
 	stateCache?: StateCache
 	tmpStateCache?: StateCache
+	stateCacheStatus: string = "disabled"
 	serverTimestamp?: number
 
 	get activeRoomID(): RoomID | null {
@@ -183,10 +184,12 @@ export class StateStore {
 		this.anyStateCache?.close()
 		this.stateCache = undefined
 		this.tmpStateCache = undefined
+		this.stateCacheStatus = "closed"
 	}
 
 	deleteCache() {
 		this.closeCache()
+		this.stateCacheStatus = "deleted"
 		return StateCache.delete()
 	}
 
@@ -196,17 +199,20 @@ export class StateStore {
 		return cache.load().then(data => {
 			if (!data) {
 				console.info("No state cache found")
+				this.stateCacheStatus = "no data"
 			} else {
 				console.info(
 					"Applying state cache from", new Date(data.server_timestamp!),
 					"with", Object.keys(data.rooms ?? {}).length, "rooms",
 				)
 				this.applySync(data)
+				this.stateCacheStatus = "enabled"
 			}
 			this.stateCache = cache
 			this.tmpStateCache = undefined
 		}, err => {
 			console.error("Failed to load state cache", err)
+			this.stateCacheStatus = `failed: ${err}`
 			cache.close()
 		})
 	}

@@ -58,6 +58,9 @@ const MiscButtons = () => {
 		{client.store.anyStateCache ? <button onClick={clearCache} disabled={clearing}>
 			{clearing ? "Clearing cache..." : "Clear cache and reload"}
 		</button> : null}
+		<p>
+			State cache status: {client.store.stateCacheStatus}
+		</p>
 		<div className="spacer" />
 		<button className="logout" onClick={onClickLogout}>Logout</button>
 	</div>

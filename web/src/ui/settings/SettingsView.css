@@ -317,6 +317,11 @@ div.settings-tab > div.misc-buttons {
 			color: var(--inverted-text-color);
 		}
 	}
+
+	> p {
+		margin: .5rem;
+		text-align: center;
+	}
 }
 
 div.key-restore-modal-wrapper {
