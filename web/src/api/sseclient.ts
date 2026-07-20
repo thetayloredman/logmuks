@@ -185,12 +185,6 @@ export default class SSEClient extends RPCClient {
 	}
 
 	request<Req, Resp>(command: string, data: Req): CancellablePromise<Resp> {
-		if (!this.isConnected) {
-			return new CancellablePromise((_resolve, reject) => {
-				reject(new Error("Websocket not connected"))
-			}, () => {
-			})
-		}
 		const ac = new AbortController()
 		return new CancellablePromise((resolve, reject) => {
 			fetch(`_gomuks/exec/${command}`, {
