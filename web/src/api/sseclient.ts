@@ -60,6 +60,10 @@ export default class SSEClient extends RPCClient {
 					params.set("prev_listener_id", this.#listenerID.toString())
 				}
 			}
+			const serverTS = this.getCachedServerTimestamp?.()
+			if (serverTS) {
+				params.set("last_server_ts", serverTS.toString())
+			}
 			const addr = `_gomuks/sse?${params}`
 			console.info("Connecting to SSE", addr)
 			this.#dispatchConnectionStatus(false, true, this.connect.current?.error ?? null, -1)

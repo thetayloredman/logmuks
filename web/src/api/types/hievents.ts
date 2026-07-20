@@ -104,7 +104,9 @@ export interface SyncCompleteData {
 	top_level_spaces?: RoomID[] | null
 	since?: string
 	clear_state?: boolean
+	catchup?: boolean
 	to_device?: SyncToDevice[] | null
+	server_timestamp?: number
 }
 
 export interface SyncCompleteEvent extends BaseRPCCommand<SyncCompleteData> {

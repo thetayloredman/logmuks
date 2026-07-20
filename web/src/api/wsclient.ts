@@ -113,6 +113,10 @@ export default class WSClient extends RPCClient {
 					params.set("prev_listener_id", this.#listenerID.toString())
 				}
 			}
+			const serverTS = this.getCachedServerTimestamp?.()
+			if (serverTS) {
+				params.set("last_server_ts", serverTS.toString())
+			}
 			if (this.compress) {
 				params.set("compress", "1")
 			}

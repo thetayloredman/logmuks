@@ -39,6 +39,7 @@ import {
 	RoomID,
 	SyncRoom,
 	TimelineRowTuple,
+	TombstoneEventContent,
 	UnknownEventContent,
 	UserID,
 	WrappedBotCommand,
@@ -47,6 +48,7 @@ import {
 } from "../types"
 import FakeCommands from "../types/fakecommands.ts"
 import StandardCommands from "../types/stdcommands.json"
+import type StateCache from "./cache.ts"
 import type { StateStore } from "./main.ts"
 
 function arraysAreEqual<T>(arr1?: T[], arr2?: T[]): boolean {
@@ -79,6 +81,34 @@ function visibleMetaIsEqual(meta1: DBRoom, meta2: DBRoom): boolean {
 		llSummaryIsEqual(meta1.lazy_load_summary, meta2.lazy_load_summary) &&
 		meta1.encryption_event?.algorithm === meta2.encryption_event?.algorithm &&
 		meta1.has_member_list === meta2.has_member_list
+}
+
+function tombstoneIsEqual(t1?: TombstoneEventContent, t2?: TombstoneEventContent): boolean {
+	return t1?.body === t2?.body &&
+		t1?.replacement_room === t2?.replacement_room
+}
+
+function otherMetaIsEqual(meta1: DBRoom, meta2: DBRoom): boolean {
+	return meta1.preview_event_rowid === meta2.preview_event_rowid &&
+		meta1.sorting_timestamp === meta2.sorting_timestamp &&
+		meta1.unread_highlights === meta2.unread_highlights &&
+		meta1.unread_notifications === meta2.unread_notifications &&
+		meta1.unread_messages === meta2.unread_messages &&
+		meta1.marked_unread === meta2.marked_unread &&
+		tombstoneIsEqual(meta1.tombstone, meta2.tombstone)
+}
+
+function memToRawEvent(evt: MemDBEvent): RawDBEvent {
+	const content = evt.orig_content ?? evt.content
+	const { mem, pending, viewing_redacted, ...rest } = evt
+	return {
+		...rest,
+		decrypted: evt.encrypted ? content : undefined,
+		content: evt.encrypted ?? content,
+		local_content: evt.orig_local_content ?? evt.local_content,
+		type: evt.encrypted ? "m.room.encrypted" : evt.type,
+		decrypted_type: evt.encrypted ? evt.type : undefined,
+	}
 }
 
 export interface AutocompleteMemberEntry {
@@ -552,14 +582,16 @@ export class RoomStateStore {
 		)
 	}
 
-	applySync(sync: SyncRoom) {
+	applySync(sync: SyncRoom, isNewRoom: boolean) {
 		if (sync.meta?.dm_user_id === "") {
 			sync.meta.dm_user_id = undefined
 		}
+		let metaChanged = isNewRoom
 		if (sync.meta) {
 			if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
 				this.meta.current = sync.meta
 			} else {
+				metaChanged = !otherMetaIsEqual(this.meta.current, sync.meta)
 				this.searchString = this.#makeSearchString(sync.meta)
 				this.meta.emit(sync.meta)
 			}
@@ -571,6 +603,7 @@ export class RoomStateStore {
 			}
 			this.accountData.set(ad.type, ad.content)
 			this.accountDataSubs.notify(ad.type)
+			this.parent.stateCache?.setRoomAccountData(ad)
 		}
 		for (const evt of sync.events ?? []) {
 			this.applyEvent(evt)
@@ -632,6 +665,31 @@ export class RoomStateStore {
 				newState.forEach(listener.onStateEvent)
 			})
 		}
+		if (this.parent.stateCache && metaChanged) {
+			this.parent.stateCache.setRoom(this.getStateForCache())
+		}
+	}
+
+	getStateForCache(): Parameters<StateCache["setRoom"]>[0] {
+		// This should be roughly in sync with pkg/hicli/init.go's getInitialSyncRoom
+		const meta = this.meta.current
+		const events: RawDBEvent[] = []
+		const state: SyncRoom["state"] = {}
+		const previewEvent = meta.preview_event_rowid && this.eventsByRowID.get(meta.preview_event_rowid)
+		if (previewEvent) {
+			events.push(memToRawEvent(previewEvent))
+			const previewMember = this.getStateEvent("m.room.member", previewEvent?.sender ?? "")
+			if (previewMember) {
+				events.push(memToRawEvent(previewMember))
+				const stateMap = state[previewMember.type] ?? {}
+				stateMap[previewMember.state_key!] = previewMember.rowid
+				state[previewMember.type] = stateMap
+			}
+			if (previewEvent.last_edit) {
+				events.push(memToRawEvent(previewEvent.last_edit))
+			}
+		}
+		return { meta, state, events }
 	}
 
 	removeFailedEvent(evt: MemDBEvent) {

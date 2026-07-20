@@ -39,6 +39,7 @@ import {
 	UnknownEventContent,
 	UserID,
 } from "../types"
+import StateCache from "./cache.ts"
 import { InvitedRoomStore } from "./invitedroom.ts"
 import { RoomStateStore } from "./room.ts"
 import {
@@ -152,6 +153,9 @@ export class StateStore {
 	activeRoomIsPreview: boolean = false
 	imageAuthToken?: string
 	readonly widgetListeners: Set<WidgetListener> = new Set()
+	stateCache?: StateCache
+	tmpStateCache?: StateCache
+	serverTimestamp?: number
 
 	get activeRoomID(): RoomID | null {
 		return this.#activeRoomID
@@ -169,6 +173,35 @@ export class StateStore {
 			return false
 		}
 		return true
+	}
+
+	closeCache() {
+		if (this.tmpStateCache) {
+			this.tmpStateCache.close()
+		} else if (this.stateCache) {
+			this.stateCache.close()
+		}
+	}
+
+	loadCache() {
+		const cache = new StateCache()
+		this.tmpStateCache = cache
+		return cache.load().then(data => {
+			if (!data) {
+				console.info("No state cache found")
+			} else {
+				console.info(
+					"Applying state cache from", new Date(data.server_timestamp!),
+					"with", Object.keys(data.rooms ?? {}).length, "rooms",
+				)
+				this.applySync(data)
+			}
+			this.stateCache = cache
+			this.tmpStateCache = undefined
+		}, err => {
+			console.error("Failed to load state cache", err)
+			cache.close()
+		})
 	}
 
 	getSpaceByID(spaceID: string | undefined): RoomListFilter | null {
@@ -328,6 +361,9 @@ export class StateStore {
 			prevActiveRoom = this.activeRoomID
 			this.clear()
 		}
+		if (sync.catchup) {
+			console.info("Received catchup sync")
+		}
 		const resyncRoomList = this.roomList.current.length === 0
 		const changedRoomListEntries = new Map<RoomID, RoomListEntry | null>()
 		if (sync.to_device?.length && this.widgetListeners.size > 0) {
@@ -346,6 +382,7 @@ export class StateStore {
 			if (this.activeRoomID === room.room_id) {
 				this.switchRoom?.(room.room_id)
 			}
+			this.stateCache?.setInvitedRoom(data)
 		}
 		const hasInvites = this.inviteRooms.size > 0
 		for (const [roomID, data] of Object.entries(sync.rooms ?? {})) {
@@ -364,7 +401,7 @@ export class StateStore {
 				isNewRoom = true
 			}
 			const roomListEntryChanged = !resyncRoomList && (isNewRoom || this.#roomListEntryChanged(data, room))
-			room.applySync(data)
+			room.applySync(data, isNewRoom)
 			if (roomListEntryChanged) {
 				const entry = this.#makeRoomListEntry(data, room)
 				changedRoomListEntries.set(roomID, entry)
@@ -411,6 +448,7 @@ export class StateStore {
 			}
 			this.accountData.set(ad.type, ad.content)
 			this.accountDataSubs.notify(ad.type)
+			this.stateCache?.setAccountData(ad)
 		}
 		for (const roomID of sync.left_rooms ?? []) {
 			if (this.activeRoomID === roomID) {
@@ -419,6 +457,7 @@ export class StateStore {
 			this.rooms.delete(roomID)
 			changedRoomListEntries.set(roomID, null)
 			this.#applyUnreadModification(null, this.roomListEntries.get(roomID))
+			this.stateCache?.deleteRoom(roomID)
 		}
 
 		let sortFunc: SortFunc = timestampSort
@@ -474,15 +513,21 @@ export class StateStore {
 			}
 			for (const [spaceID, children] of Object.entries(sync.space_edges ?? {})) {
 				this.getSpaceStore(spaceID, true).children = children
+				this.stateCache?.setSpaceEdges(spaceID, children)
 			}
 		}
 		if (sync.top_level_spaces) {
 			this.topLevelSpaces.emit(sync.top_level_spaces)
 			this.spaceOrphans.children = sync.top_level_spaces.map(child_id => ({ child_id }))
+			this.stateCache?.setTopLevelSpaces(sync.top_level_spaces)
 		}
 		if (prevActiveRoom) {
 			// TODO this will fail if the room is not in the top 100 recent rooms
 			this.switchRoom?.(prevActiveRoom)
+		}
+		if (sync.server_timestamp) {
+			this.stateCache?.setServerTimestamp(sync.server_timestamp)
+			this.serverTimestamp = sync.server_timestamp
 		}
 	}
 

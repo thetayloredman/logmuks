@@ -98,6 +98,7 @@ export default tseslint.config(
 			"react-hooks/refs": "off",
 			"react-hooks/static-components": "off",
 			"react-hooks/purity": "off",
+			"@typescript-eslint/no-unused-vars": ["error", {ignoreRestSiblings: true}],
 		},
 	},
 )

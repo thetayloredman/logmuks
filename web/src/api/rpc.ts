@@ -100,6 +100,7 @@ export default abstract class RPCClient {
 	public readonly connect: CachedEventDispatcher<ConnectionEvent> = new CachedEventDispatcher()
 	public readonly event: EventDispatcher<RPCEvent> = new EventDispatcher()
 	public readonly rpcMediaUpload: boolean = false
+	public getCachedServerTimestamp?: () => number | undefined
 	protected readonly pendingRequests: Map<number, {
 		resolve: (data: unknown) => void,
 		reject: (err: Error) => void

@@ -17,6 +17,7 @@ import type { MouseEvent } from "react"
 import { CancellablePromise } from "@/util/promise.ts"
 import { CachedEventDispatcher, NonNullCachedEventDispatcher } from "../util/eventdispatcher.ts"
 import RPCClient, { SendMessageParams } from "./rpc.ts"
+import SSEClient from "./sseclient.ts"
 import { RoomStateStore, StateStore, WidgetListener, fakeGomuksSender } from "./statestore"
 import {
 	ClientState,
@@ -53,6 +54,7 @@ export default class Client {
 	passwordCache?: string
 
 	constructor(readonly rpc: RPCClient) {
+		this.rpc.getCachedServerTimestamp = () => this.store.serverTimestamp
 		this.rpc.event.listen(this.#handleEvent)
 		this.rpc.connect.listen(() => this.initComplete.emit(false))
 		this.store.accountDataSubs.getSubscriber("im.ponies.emote_rooms")(() =>
@@ -92,6 +94,9 @@ export default class Client {
 			return
 		}
 		console.log("Successfully authenticated, connecting to websocket")
+		if (this.rpc instanceof SSEClient) {
+			await this.store.loadCache()
+		}
 		this.rpc.start()
 		this.requestNotificationPermission()
 	}
@@ -280,6 +285,7 @@ export default class Client {
 		}, window.gcSettings.interval)
 		return () => {
 			abort.abort()
+			this.store.closeCache()
 			this.rpc.stop()
 			clearInterval(this.#gcInterval)
 		}
@@ -300,6 +306,7 @@ export default class Client {
 			this.syncStatus.emit(ev.data)
 		} else if (ev.command === "init_complete") {
 			this.initComplete.emit(true)
+			this.store.stateCache?.tryFlush()
 		} else if (ev.command === "sync_complete") {
 			this.store.applySync(ev.data)
 		} else if (ev.command === "events_decrypted") {
