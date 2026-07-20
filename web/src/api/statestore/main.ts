@@ -482,6 +482,22 @@ export class StateStore {
 			sortFunc = chainedSort(favoriteSort, sortFunc)
 		}
 
+		if (sync.space_edges) {
+			// Ensure all space stores exist first
+			for (const spaceID of Object.keys(sync.space_edges)) {
+				this.getSpaceStore(spaceID, true)
+			}
+			for (const [spaceID, children] of Object.entries(sync.space_edges ?? {})) {
+				this.getSpaceStore(spaceID, true).children = children
+				this.stateCache?.setSpaceEdges(spaceID, children)
+			}
+		}
+		if (sync.top_level_spaces) {
+			this.topLevelSpaces.emit(sync.top_level_spaces)
+			this.spaceOrphans.children = sync.top_level_spaces.map(child_id => ({ child_id }))
+			this.stateCache?.setTopLevelSpaces(sync.top_level_spaces)
+		}
+
 		let updatedRoomList: RoomListEntry[] | undefined
 		if (resyncRoomList) {
 			updatedRoomList = this.inviteRooms.values().toArray()
@@ -519,21 +535,6 @@ export class StateStore {
 		}
 		if (updatedRoomList) {
 			this.roomList.emit(updatedRoomList)
-		}
-		if (sync.space_edges) {
-			// Ensure all space stores exist first
-			for (const spaceID of Object.keys(sync.space_edges)) {
-				this.getSpaceStore(spaceID, true)
-			}
-			for (const [spaceID, children] of Object.entries(sync.space_edges ?? {})) {
-				this.getSpaceStore(spaceID, true).children = children
-				this.stateCache?.setSpaceEdges(spaceID, children)
-			}
-		}
-		if (sync.top_level_spaces) {
-			this.topLevelSpaces.emit(sync.top_level_spaces)
-			this.spaceOrphans.children = sync.top_level_spaces.map(child_id => ({ child_id }))
-			this.stateCache?.setTopLevelSpaces(sync.top_level_spaces)
 		}
 		if (prevActiveRoom) {
 			// TODO this will fail if the room is not in the top 100 recent rooms
