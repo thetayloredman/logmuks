@@ -432,6 +432,7 @@ export class StateStore {
 					const predecessorRoom = this.rooms.get(predecessorID)
 					if (predecessorRoom?.meta.current.tombstone?.replacement_room === roomID) {
 						changedRoomListEntries.set(predecessorID, null)
+						this.#applyUnreadModification(null, this.roomListEntries.get(predecessorID))
 						predecessorRoom.tombstoned = true
 						predecessorRoom.hidden = true
 					}
