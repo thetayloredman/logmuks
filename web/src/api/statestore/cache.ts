@@ -202,6 +202,7 @@ export default class StateCache {
 		for (const value of flushing.values()) {
 			value(txn)
 		}
+		txn.commit()
 	})
 
 	private addToQueue(key: string, fn: Update) {

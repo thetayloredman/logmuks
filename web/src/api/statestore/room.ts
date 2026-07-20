@@ -586,12 +586,13 @@ export class RoomStateStore {
 		if (sync.meta?.dm_user_id === "") {
 			sync.meta.dm_user_id = undefined
 		}
-		let metaChanged = isNewRoom
+		let metaChanged = false
 		if (sync.meta) {
 			if (visibleMetaIsEqual(this.meta.current, sync.meta)) {
+				metaChanged = isNewRoom || !otherMetaIsEqual(this.meta.current, sync.meta)
 				this.meta.current = sync.meta
 			} else {
-				metaChanged = !otherMetaIsEqual(this.meta.current, sync.meta)
+				metaChanged = true
 				this.searchString = this.#makeSearchString(sync.meta)
 				this.meta.emit(sync.meta)
 			}
