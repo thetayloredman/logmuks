@@ -26,11 +26,11 @@ export function getPreferenceProxy(store: StateStore, room?: RoomStateStore): Re
 		},
 		get(_target: never, key: keyof Preferences | symbol): PreferenceValueType | undefined {
 			if (typeof key !== "string") {
-				return
+				throw new Error("Preference key must be a string")
 			}
 			const pref = preferences[key]
 			if (!pref) {
-				return
+				throw new Error(`Invalid preference key: ${key}`)
 			}
 			let val: typeof pref.defaultValue | undefined
 			for (const ctx of pref.allowedContexts) {
