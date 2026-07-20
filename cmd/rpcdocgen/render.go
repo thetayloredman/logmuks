@@ -120,6 +120,7 @@ func (g *generator) buildDocSections(jsoncmd *pkg) ([]*DocSection, error) {
 	}{
 		{id: "envelope", title: "Envelope", filename: "envelope.md"},
 		{id: "websocket", title: "Websocket", filename: "websocket.md"},
+		{id: "sse", title: "Server-sent events", filename: "sse.md"},
 	}
 	out := make([]*DocSection, 0, len(docs))
 	for _, doc := range docs {

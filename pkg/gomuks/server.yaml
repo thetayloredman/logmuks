@@ -91,6 +91,22 @@ paths:
           required: true
           schema:
             type: string
+        - name: txn_id
+          in: query
+          description: |
+            An optional transaction ID to deduplicate requests. If multiple requests are sent
+            with the same ID, they'll get the same response rather than re-running the command.
+          schema:
+            type: boolean
+            default: false
+        - name: start_ts
+          in: query
+          description: |
+            When using transaction IDs, the timestamp when the first request was sent.
+            This is used to ensure that requests aren't retried for too long.
+            The server will refuse requests that are over 2 minutes old (or more than 30 seconds into the future).
+          schema:
+            type: integer
       responses:
         "200":
           description: Successfully executed command.
