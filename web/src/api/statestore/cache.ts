@@ -18,7 +18,6 @@ import {
 	DBInvitedRoom,
 	DBRoomAccountData,
 	DBSpaceEdge,
-	EventType,
 	RoomID,
 	SyncCompleteData,
 	SyncRoom,
@@ -34,8 +33,11 @@ const INVITED_ROOM_STORE = "invited_room"
 const ROOM_STORE = "room"
 const SPACE_EDGE_STORE = "space_edges"
 const ACCOUNT_DATA_STORE = "account_data"
+const ROOM_ACCOUNT_DATA_STORE = "room_account_data"
 
-const allStores = [INVITED_ROOM_STORE, ROOM_STORE, SPACE_EDGE_STORE, ACCOUNT_DATA_STORE, KV_STORE]
+const allStores = [
+	INVITED_ROOM_STORE, ROOM_STORE, SPACE_EDGE_STORE, ROOM_ACCOUNT_DATA_STORE, ACCOUNT_DATA_STORE, KV_STORE,
+]
 
 
 type indexedDBRoom = Required<Pick<SyncRoom, "meta" | "events" | "state">>
@@ -79,17 +81,26 @@ export default class StateCache {
 	}
 
 	private initDB = () => new Promise<IDBDatabase>((resolve, reject) => {
-		const req = window.indexedDB.open(CACHE_DB, 1)
+		const req = window.indexedDB.open(CACHE_DB, 2)
 		req.onsuccess = () => resolve(req.result)
 		req.onerror = () => reject(req.error ?? new Error("Open failed"))
 		req.onblocked = () => console.warn("Cache db open blocked")
-		req.onupgradeneeded = () => {
-			console.info("Upgrading cache db")
+		req.onupgradeneeded = evt => {
+			console.info("Upgrading cache db from", evt.oldVersion)
+			if (evt.oldVersion === 1) {
+				console.log("Deleting old stores")
+				for (const store of [INVITED_ROOM_STORE, ROOM_STORE, SPACE_EDGE_STORE, ACCOUNT_DATA_STORE, KV_STORE]) {
+					req.result.deleteObjectStore(store)
+				}
+			}
 			req.result.createObjectStore(INVITED_ROOM_STORE, { keyPath: "room_id" })
 			req.result.createObjectStore(ROOM_STORE)
 			req.result.createObjectStore(SPACE_EDGE_STORE, { keyPath: "room_id" })
 			req.result.createObjectStore(ACCOUNT_DATA_STORE, { keyPath: "type" })
 			req.result.createObjectStore(KV_STORE, { keyPath: "key" })
+			req.result.createObjectStore(ROOM_ACCOUNT_DATA_STORE, {
+				keyPath: ["room_id", "type"],
+			})
 		}
 	})
 
@@ -111,31 +122,27 @@ export default class StateCache {
 		const roomsQuery = txn.objectStore(ROOM_STORE).getAll()
 		const spaceEdges = txn.objectStore(SPACE_EDGE_STORE).getAll()
 		const accountData = txn.objectStore(ACCOUNT_DATA_STORE).getAll()
+		const roomAccountData = txn.objectStore(ROOM_ACCOUNT_DATA_STORE).getAll()
 		txn.oncomplete = () => {
 			if (!serverTimestamp.result || !topLevelSpaces.result
 				|| !roomsQuery.result.length && !accountData.result.length) {
 				resolve(null)
 				return
 			}
-			const account_data: Record<EventType, DBAccountData> = {}
 			const rooms = Object.fromEntries((roomsQuery.result as indexedDBRoom[])
 				.map(r => [r.meta.room_id, r as SyncRoom]))
-			for (const evt of accountData.result as DBRoomAccountData[]) {
-				if (evt.room_id) {
-					if (rooms[evt.room_id]) {
-						const ad = rooms[evt.room_id].account_data ?? {}
-						ad[evt.type] = evt
-						rooms[evt.room_id].account_data = ad
-					}
-				} else {
-					account_data[evt.type] = evt
+			for (const evt of roomAccountData.result as DBRoomAccountData[]) {
+				if (rooms[evt.room_id]) {
+					const ad = rooms[evt.room_id].account_data ?? {}
+					ad[evt.type] = evt
+					rooms[evt.room_id].account_data = ad
 				}
 			}
 			resolve({
 				server_timestamp: serverTimestamp.result.value as number,
 				top_level_spaces: topLevelSpaces.result.value as RoomID[],
 				invited_rooms: invitedRooms.result as DBInvitedRoom[],
-				account_data,
+				account_data: Object.fromEntries(accountData.result.map(e => [e.type, e])),
 				rooms,
 				space_edges: Object.fromEntries((spaceEdges.result as indexedDBSpaceEdges[])
 					.map(e => [e.room_id, e.edges])),
@@ -233,7 +240,7 @@ export default class StateCache {
 	}
 
 	setRoomAccountData(evt: DBRoomAccountData) {
-		this.addToQueue(`ad:${evt.type}:${evt.room_id}`, txn => txn.objectStore(ACCOUNT_DATA_STORE).put(evt))
+		this.addToQueue(`ad:${evt.type}:${evt.room_id}`, txn => txn.objectStore(ROOM_ACCOUNT_DATA_STORE).put(evt))
 	}
 
 	setInvitedRoom(evt: DBInvitedRoom) {
