@@ -331,20 +331,28 @@ export class RoomStateStore {
 		const createEvt = this.getStateEvent("m.room.create", "")
 		const membersCache = memberEvtIDs.values()
 			.map(rowID => this.eventsByRowID.get(rowID))
-			.filter((evt): evt is MemDBEvent => !!evt &&
-				(evt.content.membership === "join" || evt.content.membership === "invite"))
+			.filter((evt): evt is MemDBEvent => !!evt && (
+				evt.content.membership === "join"
+				|| evt.content.membership === "invite"
+				|| evt.content.membership === "knock"
+			))
 			.map((evt): AutocompleteMemberEntry => ({
 				userID: evt.state_key!,
 				displayName: getDisplayname(evt.state_key!, evt.content as MemberEventContent),
 				avatarURL: evt.content?.avatar_url,
-				searchString: toSearchableString(`${evt.content?.displayname ?? ""}${evt.state_key!.slice(1)}`),
+				searchString: toSearchableString(`${evt.content?.displayname ?? ""}${evt.state_key!.slice(1)} ${
+					evt.content.membership !== "join" ? evt.content.membership : ""}`),
 				event: evt,
 			}))
 			.toArray()
 		membersCache.sort((a, b) => {
+			const aKnocked = a.event.content.membership === "knock"
+			const bKnocked = b.event.content.membership === "knock"
 			const aPower = getUserLevel(powerLevels, createEvt, a.userID)
 			const bPower = getUserLevel(powerLevels, createEvt, b.userID)
-			if (aPower !== bPower) {
+			if (aKnocked !== bKnocked) {
+				return aKnocked ? 1 : -1
+			} else if (aPower !== bPower) {
 				return bPower - aPower
 			} else if (a.displayName === b.displayName) {
 				return a.userID.localeCompare(b.userID)
