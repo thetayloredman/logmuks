@@ -17,7 +17,7 @@ import { JSX, use, useCallback, useEffect, useState } from "react"
 import { PuffLoader } from "react-spinners"
 import { getAvatarURL, getMediaURL, getUserColor } from "@/api/media.ts"
 import { fakeGomuksSender, maybeRedactMemberEvent, useRoomMember } from "@/api/statestore"
-import { GetProfileResponse, UserID } from "@/api/types"
+import { GetProfileResponse, UserID, UserProfile } from "@/api/types"
 import { ensureString, getLocalpart, getServerName } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import { LightboxContext } from "../modal"
@@ -65,14 +65,15 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 	} else {
 		reactUserID = <>@<span className="bidi-isolate">{getLocalpart(userID)}</span>:{getServerName(userID)}</>
 	}
-	const getBannerURL = (profile: UserProfile | null) => {
+	const getBannerURL = (profile: UserProfile | undefined) => {
 		if (!profile) {
 			return undefined
 		}
 		const url = ensureString(profile["chat.commet.profile_banner"])
 		return getMediaURL(url, false)
 	}
-	const bannerURL = getBannerURL(globalProfile)
+
+	const bannerURL = getBannerURL(globalProfile?.profile)
 	let userColor
 	if (!bannerURL) {
 		userColor = getUserColor(userID)
@@ -88,14 +89,14 @@ const UserInfo = ({ userID }: UserInfoProps) => {
 				<img
 					className="avatar"
 					// this is a big avatar (236px by default), use full resolution
-					src={getAvatarURL(userID, member ?? globalProfile)}
+					src={getAvatarURL(userID, renderedProfile)}
 					onClick={openLightbox}
 					alt=""
 				/>
 				<img
 					className="banner"
 					// also full res because lazy
-					src={getBannerURL(globalProfile)}
+					src={bannerURL}
 					style={{backgroundColor: userColor}}
 					onClick={openLightbox}
 					alt=""
