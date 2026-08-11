@@ -152,11 +152,11 @@ div.right-panel-content.user {
 	padding: 1rem 1rem calc(1rem + var(--window-bottom-margin));
 
 	div.avatar-container {
-		width: var(--right-panel-width);
+		width: 100%;
 		height: var(--right-panel-height);
 		margin: 0;
 		display: grid;
-  		grid-template-columns: 10px var(--profile-avatar-size) 1fr;
+  		grid-template-columns: 1fr var(--profile-avatar-size) 1fr;
   		grid-template-rows: var(--profle-banner-height) repeat(calc(var(--profile-avatar-size) / 2), 2);
 
 		> img {
@@ -167,7 +167,7 @@ div.right-panel-content.user {
 		> img.avatar {
 			width: var(--profile-avatar-size);
 			height: var(--profile-avatar-size);
-			grid-column: 2;
+			grid-column: 2 / 3;
 			grid-row: 2 / 4;
 			z-index: 1;
 		}
