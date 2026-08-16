@@ -185,9 +185,18 @@ const UserExtendedProfile = ({
 	const viewExtensibleProfile = () => {
 		openModal(modals.jsonView(profile))
 	}
+	const openUrl = (url: string) => {
+		window.open(url, "_blank", "noopener,noreferrer")
+	}
+	const efuDashboardUrl = `https://metrics.zirco.dev/d/ad9f7kx/events-from-user`
+		+ `?orgId=1&from=now-30d&to=now&timezone=browser&var-user=${userID}`
+	const freqDashboardUrl = `https://metrics.zirco.dev/d/ad9j9qx/frequented-rooms-by-user`
+		+ `?var-time_window=1m&orgId=1&from=now-6M&to=now&timezone=browser&var-user=${userID}`
 	const viewButtons = <div className="view-buttons">
 		{profile && <button onClick={viewExtensibleProfile}>Global profile</button>}
 		{memberEvt && room && <button onClick={viewMemberEvent}>Member event</button>}
+		<button onClick={() => openUrl(freqDashboardUrl)}>Frequented rooms</button>
+		<button onClick={() => openUrl(efuDashboardUrl)}>Sent events</button>
 	</div>
 	const baseContent = ((memberEvt && room) || loading || errors) ? <div className="extended-profile">
 		{loading && <ScaleLoader className="user-info-loader" color="var(--primary-color)"/>}
