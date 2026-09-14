@@ -362,7 +362,9 @@ const MessageComposer = () => {
 		if (room.preferences.hide_fingerprint) {
 			url_previews = undefined
 		} else {
-			extra["app.gomuks"] = "web"
+		}
+		if (url_previews && url_previews.length === 0) {
+			url_previews = undefined
 		}
 		client.sendMessage({
 			room_id: room.roomID,
